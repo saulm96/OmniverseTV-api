@@ -1,0 +1,43 @@
+{
+  "name": "omniverse-tv-api",
+  "version": "1.0.0",
+  "description": "Backend service for an Interdimensional TV subscription platform.",
+  "main": "dist/server.js",
+  "scripts": {
+    "start": "node dist/server.js",
+    "dev": "nodemon",
+    "build": "tsc",
+    "docker:dev": "scripts\\dev.bat",
+    "docker:prod": "scripts\\prod.bat",
+    "docker:clean": "scripts\\clean.bat",
+    "docker:logs": "docker-compose logs -f"
+  },
+  "keywords": [
+    "api",
+    "backend",
+    "nodejs",
+    "typescript",
+    "docker"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "bullmq": "^5.7.11",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.9.7",
+    "redis": "^4.6.13",
+    "sequelize": "^6.37.3"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.12.12",
+    "nodemon": "^3.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}

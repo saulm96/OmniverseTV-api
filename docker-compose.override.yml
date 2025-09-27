@@ -1,0 +1,39 @@
+services:
+  api_server:
+    build:
+      target: development
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - ./src:/usr/src/app/src:cached
+      - ./package.json:/usr/src/app/package.json:cached
+      - ./tsconfig.json:/usr/src/app/tsconfig.json:cached
+      - node_modules:/usr/src/app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    command: ["npm", "run", "dev"]
+
+  worker:
+    build:
+      target: development
+    volumes:
+      - ./src:/usr/src/app/src:cached
+      - ./package.json:/usr/src/app/package.json:cached
+      - ./tsconfig.json:/usr/src/app/tsconfig.json:cached
+      - node_modules_worker:/usr/src/app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: ["npx", "nodemon", "--exec", "ts-node", "src/worker.ts"]
+
+  database:
+    ports:
+      - "3306:3306"
+
+  cache:
+    ports:
+      - "6379:6379"
+
+volumes:
+  node_modules:
+  node_modules_worker:
