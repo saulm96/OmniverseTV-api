@@ -1,0 +1,28 @@
+services:
+  api_server:
+    build:
+      target: production
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  worker:
+    build:
+      target: production
+    environment:
+      - NODE_ENV=production
+    command: ["node", "dist/worker.js"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
