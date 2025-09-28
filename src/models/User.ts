@@ -39,7 +39,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
 User.init(
     {
       id: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.INTEGER.UNSIGNED,
         autoIncrement: true,
         primaryKey: true,
       },
@@ -68,6 +68,12 @@ User.init(
     {
       sequelize,
       modelName: 'User',
-      timestamps: true,
-    }
+      hooks: {
+        beforeCreate: async (user) => {
+          if (user.password_hash) {
+            const salt = await bcrypt.genSalt(10);
+            user.password_hash = await bcrypt.hash(user.password_hash, salt);
+          }
+        },
+      },    }
 );

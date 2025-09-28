@@ -16,13 +16,10 @@ export const registerUser = async (userData: Omit<UserAttributes, "id">) => {
     throw new ConflictError("User already exists");
   }
 
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password_hash, salt);
-
   const newUser = await User.create({
     username,
     email,
-    password_hash: hashedPassword,
+    password_hash,
     preferred_language,
   });
   return {

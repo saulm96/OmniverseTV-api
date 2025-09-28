@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
 
-
 import * as authService from "../services/authService";
 import { BadRequestError } from "../utils/errors";
 
@@ -68,6 +67,26 @@ export const login = async (
   } catch (error) {
     next(error);
   }
+};
+
+/**
+ * Logs the user out by clearing the session cookies.
+ */
+export const logout = (req: Request, res: Response) => {
+  // Clear the cookies by setting an expired date
+  res.cookie("accessToken", "", {
+    httpOnly: true,
+    expires: new Date(0),
+    secure: process.env.NODE_ENV === "production",
+  });
+
+  res.cookie("refreshToken", "", {
+    httpOnly: true,
+    expires: new Date(0),
+    secure: process.env.NODE_ENV === "production",
+  });
+
+  res.status(200).json({ message: "Logged out successfully" });
 };
 
 //CONTROLLER TO TEST THE MIDDLEWARES
