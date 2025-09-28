@@ -89,6 +89,31 @@ export const logout = (req: Request, res: Response) => {
   res.status(200).json({ message: "Logged out successfully" });
 };
 
+/**
+ * Refreshes the access token using a valid refresh token.
+ */
+export const refreshToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { refreshToken } = req.cookies;
+    const { newAccessToken } = await authService.refreshUserSession(refreshToken);
+
+    res.cookie('accessToken', newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    res.status(200).json({ message: 'Access token refreshed successfully.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 //CONTROLLER TO TEST THE MIDDLEWARES
 export const getMe = (req: Request, res: Response) => {
   // The user object is attached to the request by the 'protect' middleware
