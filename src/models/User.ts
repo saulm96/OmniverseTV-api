@@ -1,21 +1,37 @@
-import {DataTypes, Model} from "sequelize";
+import {DataTypes, Model, Optional} from "sequelize";
 import {sequelize} from "../database/connection";
+import bcrypt from "bcrypt";
 
 //Define the User model interface
-interface UserAttributes {
-    id?: number;
+export interface UserAttributes {
+    id: number;
     username: string;
     email: string;
     password_hash: string;
     preferred_language: string;
 }
 
-class User extends Model<UserAttributes> implements UserAttributes {
-    public id! : number;
-    public username!: string;
-    public email!: string;
-    public password_hash!: string;
-    public preferred_language!: string;
+interface UserCreationAttributes extends Optional<UserAttributes, 'id'> {}
+
+export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
+  // --- Atributos de la Base de Datos ---
+  public id!: number;
+  public username!: string;
+  public email!: string;
+  public password_hash!: string;
+  public preferred_language!: string;
+
+  // Timestamps
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+
+  public comparePassword(candidatePassword: string): Promise<boolean> {
+    return bcrypt.compare(candidatePassword, this.password_hash);
+  }
+
+  public static findByEmail(email: string): Promise<User | null> {
+    return User.findOne({ where: { email } });
+  }
 }
 
 //Initialize the model
@@ -56,4 +72,3 @@ User.init(
     }
   );
 
-  export default User;
