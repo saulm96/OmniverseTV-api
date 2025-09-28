@@ -19,10 +19,8 @@ async function startServer() {
     //...Middlewares...
     app.use(express.json());
     app.use(cookieParser());
-
-    //...Routes...
     app.use("/api/v1", router);
-  
+
     app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   } catch (error) {
     console.error("❌ Unable to start the server:", error);
