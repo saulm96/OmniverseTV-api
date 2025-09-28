@@ -2,7 +2,7 @@ import {
   Model,
   DataTypes,
   Optional,
-  BelongsToManyAddAssociationsMixin, // Correct type for adding multiple associations
+  BelongsToManyAddAssociationsMixin,
   BelongsToManyGetAssociationsMixin,
 } from 'sequelize';
 import { sequelize } from '../database/connection';
@@ -28,16 +28,45 @@ export class Package
   public name!: string;
   public description!: string;
   public price!: number;
-  //TODO: We will delete the timeStamps in the future if we don't need them
+
   // Timestamps
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
   // --- Association methods ---
-  // These are injected by Sequelize after associations are defined.
-  // We declare them here to make TypeScript aware of them.
-  public addChannels!: BelongsToManyAddAssociationsMixin<Channel, number>; // Use plural form here
+  public addChannels!: BelongsToManyAddAssociationsMixin<Channel, number[]>;
   public getChannels!: BelongsToManyGetAssociationsMixin<Channel>;
+
+  // --- Static Methods ---
+  /**
+   * Finds a package by its primary key.
+   * Does NOT include associated channels.
+   * @param id The ID of the package.
+   */
+  public static async findById(id: number): Promise<Package | null> {
+    return this.findByPk(id);
+  }
+
+  /**
+   * Finds a package by its primary key, including its associated channels.
+   * @param id The ID of the package.
+   */
+  public static async findByIdWithChannels(id: number): Promise<Package | null> {
+    return this.findByPk(id, {
+      include: {
+        model: Channel,
+        as: 'channels',
+        through: { attributes: [] }, // Hides the join table attributes
+      },
+    });
+  }
+
+  /**
+   * Finds all packages.
+   */
+  public static async findAllPackages(): Promise<Package[]> {
+    return this.findAll();
+  }
 }
 
 // Initialize Package model
@@ -63,7 +92,7 @@ Package.init(
   },
   {
     tableName: 'packages',
-    sequelize, // We need to pass the connection instance
+    sequelize,
   }
 );
 

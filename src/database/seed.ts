@@ -1,7 +1,8 @@
 import { sequelize } from './connection';
 import { Package } from '../models/Package';
 import Channel from '../models/Channel';
-import '../models';
+import { Subscription } from '../models/Subscription'; // Asegúrate de importar Subscription
+import '../models/index'; // Importar el archivo de asociaciones
 
 // Sample data for seeding
 const packagesData = [
@@ -66,14 +67,27 @@ const channelsData = [
     dimension_origin: 'Olympus-Prime',
   },
 ];
+
 const seedDatabase = async () => {
   try {
+    console.log('Starting database seeding...');
+
+    // Verificar que todos los modelos estén cargados
+    console.log('Available models:', Object.keys(sequelize.models));
+
     // Manually drop tables in the correct order to avoid foreign key constraints
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 0;');
+    
+    // Forzar la sincronización - esto recreará todas las tablas basándose en los modelos
     await sequelize.sync({ force: true });
+    
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 1;');
 
     console.log('Database synchronized. Tables dropped and recreated.');
+
+    // Verificar que la tabla subscriptions tenga la columna cancelledAt
+    const [results] = await sequelize.query('DESCRIBE subscriptions;');
+    console.log('Subscriptions table structure:', results);
 
     // Create Packages
     const createdPackages = await Package.bulkCreate(packagesData);
@@ -84,7 +98,6 @@ const seedDatabase = async () => {
     console.log(`Created ${createdChannels.length} channels.`);
 
     // Associate Channels with Packages
-    // We use a Promise.all to run these associations in parallel for better performance
     await Promise.all([
       createdPackages[0].addChannels([createdChannels[0], createdChannels[1]]), // Comedy
       createdPackages[1].addChannels([createdChannels[2], createdChannels[3]]), // Mystery
@@ -103,4 +116,3 @@ const seedDatabase = async () => {
 };
 
 seedDatabase();
-
