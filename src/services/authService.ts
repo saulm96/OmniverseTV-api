@@ -2,7 +2,11 @@ import bcrypt from "bcrypt";
 import { User } from "../models";
 import type { UserAttributes } from "../models/User";
 import { generateAuthTokens } from "../utils/jwt";
-import { ConflictError, NotFoundError, UnauthorizedError } from "../utils/errors";
+import {
+  ConflictError,
+  NotFoundError,
+  UnauthorizedError,
+} from "../utils/errors";
 
 export const registerUser = async (userData: Omit<UserAttributes, "id">) => {
   const { username, email, password_hash, preferred_language } = userData;
@@ -29,20 +33,22 @@ export const registerUser = async (userData: Omit<UserAttributes, "id">) => {
   };
 };
 
-export const loginUser = async (credentials: Pick<UserAttributes, 'email' | 'password_hash'>) => {
-    const { email, password_hash: password } = credentials;
+export const loginUser = async (
+  credentials: Pick<UserAttributes, "email" | "password_hash">
+) => {
+  const { email, password_hash: password } = credentials;
 
-    const user = await User.findByEmail(email);
-    if (!user) {
-        throw new NotFoundError('User not found.');
-    }
+  const user = await User.findByEmail(email);
+  if (!user) {
+    throw new NotFoundError("User not found.");
+  }
 
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-        throw new UnauthorizedError('Invalid credentials.');
-    }
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) {
+    throw new UnauthorizedError("Invalid credentials.");
+  }
 
-    const tokens = generateAuthTokens(user);
+  const tokens = generateAuthTokens(user);
 
-    return tokens;
+  return tokens;
 };
