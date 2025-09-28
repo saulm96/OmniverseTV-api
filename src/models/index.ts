@@ -1,4 +1,4 @@
-import User from './User';
+import {User} from './User';
 import Package from './Package';
 import Channel from './Channel';
 import Subscription from './Subscription';

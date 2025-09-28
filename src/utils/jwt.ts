@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import {User} from "../models";
 
 export const generateAuthTokens = (user: User) => {
@@ -19,3 +19,8 @@ export const generateAuthTokens = (user: User) => {
 
   return { accessToken, refreshToken };
 };
+
+export const verifyAccessToken = (token: string): JwtPayload | string => {
+  return jwt.verify(token, process.env.JWT_ACCESS_SECRET!);
+};
+

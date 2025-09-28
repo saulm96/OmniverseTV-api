@@ -1,13 +1,12 @@
 import "dotenv/config";
-import express, { Request, Response } from "express";
+import "./types";
+import express from "express";
 import { sequelize, connectToDatabase } from "./database/connection";
+import router from "./routes/router";
+import cookieParser from "cookie-parser";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-app.get("/", (req: Request, res: Response) => {
-  res.send("¡El servidor de OmniverseTV API está funcionando! 📺");
-});
 
 async function startServer() {
   try {
@@ -17,6 +16,13 @@ async function startServer() {
     await sequelize.sync({ force: false });
     console.log("✅ Database synchronized successfully.");
 
+    //...Middlewares...
+    app.use(express.json());
+    app.use(cookieParser());
+
+    //...Routes...
+    app.use("/api/v1", router);
+  
     app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   } catch (error) {
     console.error("❌ Unable to start the server:", error);

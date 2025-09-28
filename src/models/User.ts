@@ -25,6 +25,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
+  //USER METHODS
   public comparePassword(candidatePassword: string): Promise<boolean> {
     return bcrypt.compare(candidatePassword, this.password_hash);
   }
@@ -62,13 +63,11 @@ User.init(
       preferred_language: {
         type: DataTypes.STRING,
         allowNull: false,
-        defaultValue: 'en',
       },
     },
     {
       sequelize,
       modelName: 'User',
-      timestamps: false, 
+      timestamps: true,
     }
-  );
-
+);

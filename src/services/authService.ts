@@ -7,8 +7,8 @@ import { ConflictError, NotFoundError, UnauthorizedError } from "../utils/errors
 export const registerUser = async (userData: Omit<UserAttributes, "id">) => {
   const { username, email, password_hash, preferred_language } = userData;
 
-  const ecistingUser = await User.findOne({ where: { email } });
-  if (ecistingUser) {
+  const existingUser = await User.findByEmail(email);
+  if (existingUser) {
     throw new ConflictError("User already exists");
   }
 
