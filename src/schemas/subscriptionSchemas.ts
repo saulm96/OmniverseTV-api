@@ -10,6 +10,9 @@ export const createSubscriptionSchema = z.object({
 // Schema for canceling a subscription
 export const cancelSubscriptionSchema = z.object({
   params: z.object({
-    subscriptionId: z.number().int().positive('Subscription ID must be a positive integer'),
+    id: z
+      .string()
+      .min(1)
+      .regex(/^\d+$/, 'Subscription ID must be a numeric string'),
   }),
 });
