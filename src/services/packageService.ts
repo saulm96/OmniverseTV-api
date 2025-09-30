@@ -1,8 +1,24 @@
 import { Package } from '../models/Package';
-import {Translation} from "../models/Translation"
+import { Translation } from '../models/Translation';
 import { NotFoundError } from '../utils/errors';
 import { translationQueue } from '../queues/translationQueue';
-import { redisClient } from '../config/reddis/reddisClient'; // <- Updated path
+import { redisClient } from '../config/reddis/reddisClient';
+
+// Defines the shape of the API response for a package, including optional translation.
+interface TranslatedPackageResponse {
+  id: number;
+  name: string;
+  description: string;
+  price: string;
+  createdAt: Date;
+  updatedAt: Date;
+  channels: any[];
+  translation?: {
+    languageCode: string;
+    name: string;
+    description: string;
+  };
+}
 
 /**
  * Retrieves all packages from the database.
@@ -19,29 +35,36 @@ export const getAllPackages = async (): Promise<Package[]> => {
 export const getPackageById = async (
   packageId: number,
   languageCode?: string
-): Promise<Package> => {
-  // 1. Always fetch the original package with its channels.
+): Promise<TranslatedPackageResponse> => {
+  // 1. Fetch the original package with its channels.
   const tvPackage = await Package.findByIdWithChannels(packageId);
   if (!tvPackage) {
     throw new NotFoundError(`Package with ID ${packageId} not found.`);
   }
 
-  // If no translation is requested, return the original package.
+  // Convert the Sequelize model instance to a plain JSON object and assert its type.
+  // Using 'as unknown as Type' is the safest way to perform a type assertion.
+  const response = tvPackage.toJSON() as unknown as TranslatedPackageResponse;
+
+  // If no translation is requested, return the original object.
   if (!languageCode) {
-    return tvPackage;
+    return response;
   }
 
-  // 2. If a translation is requested, check the cache first.
+  // 2. If translation is requested, check the cache first.
   const cacheKey = `translation:package:${packageId}:${languageCode}`;
   const cachedTranslation = await redisClient.get(cacheKey);
 
   if (cachedTranslation) {
     console.log(`CACHE HIT: Using cached translation for ${cacheKey}`);
     const parsedTranslation = JSON.parse(cachedTranslation);
-    // Overwrite the name and description with the translated content.
-    tvPackage.name = parsedTranslation.name;
-    tvPackage.description = parsedTranslation.description;
-    return tvPackage;
+    // Add the translation object to our response.
+    response.translation = {
+      languageCode,
+      name: parsedTranslation.name,
+      description: parsedTranslation.description,
+    };
+    return response;
   }
 
   // 3. If not in cache, check the database.
@@ -53,18 +76,20 @@ export const getPackageById = async (
 
   if (dbTranslation) {
     console.log(`DB HIT: Using database translation for ${cacheKey}`);
-    // Store in cache for future requests (expires in 1 hour).
     const translationData = {
       name: dbTranslation.translatedName,
       description: dbTranslation.translatedDescription,
     };
-    await redisClient.set(cacheKey, JSON.stringify(translationData), {
-      EX: 3600,
-    });
-
-    tvPackage.name = dbTranslation.translatedName;
-    tvPackage.description = dbTranslation.translatedDescription;
-    return tvPackage;
+    // Store in cache for future requests (expires in 1 hour).
+    await redisClient.set(cacheKey, JSON.stringify(translationData), { EX: 3600 });
+    
+    // Add the translation object to our response.
+    response.translation = {
+      languageCode,
+      name: translationData.name,
+      description: translationData.description,
+    };
+    return response;
   }
 
   // 4. If it doesn't exist anywhere, add a job to the queue.
@@ -76,7 +101,7 @@ export const getPackageById = async (
     originalDescription: tvPackage.description,
   });
 
-  // Return the original package immediately.
-  return tvPackage;
+  // Return the original package immediately without the translation object.
+  return response;
 };
 
