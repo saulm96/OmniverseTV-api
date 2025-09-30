@@ -2,7 +2,7 @@ import {User} from './User';
 import {Package} from './Package';
 import Channel from './Channel';
 import {Subscription} from './Subscription';
-import Translation from './Translation';
+import {Translation} from './Translation';
 
 // ---- Model Relationships ----
 

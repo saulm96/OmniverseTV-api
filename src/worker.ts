@@ -1,11 +1,11 @@
 import { Worker } from "bullmq";
-import { redisConnection } from "./config/reddis";
+import { redisConnection } from "./config/reddis/reddis";
 
 const TRANSLATION_QUEUE_NAME = "translations_queue";
 
 console.log("🔶 The OmniverseTV worker has started.");
 console.log(
-  "Waiting for translation jobs in the " + TRANSLATION_QUEUE_NAME + " queue..."
+  "Waiting for translation jobs in the " + TRANSLATION_QUEUE_NAME + ""
 );
 
 //Create a new woeker instance

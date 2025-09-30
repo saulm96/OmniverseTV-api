@@ -1,5 +1,5 @@
 import {Queue} from 'bullmq';
-import {redisConnection} from '../config/reddis';
+import {redisConnection} from '../config/reddis/reddis';
 
 const TRANSLATION_QUEUE_NAME = 'translations_queue';
 

@@ -1,7 +1,7 @@
 import "dotenv/config";
 import "./types";
 import express from "express";
-import { sequelize, connectToDatabase } from "./database/connection";
+import { sequelize, connectToDatabase } from "./config/database/connection";
 import router from "./routes/router";
 import cookieParser from "cookie-parser";
 import { errorHandler } from "./middlewares/errorMiddleware";
