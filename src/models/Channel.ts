@@ -1,18 +1,35 @@
-import { DataTypes, Model } from 'sequelize';
+import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../config/database/connection';
 
-interface ChannelAttributes {
-  id?: number;
+// Interface for Channel attributes
+export interface ChannelAttributes {
+  id: number;
   name: string;
   description: string;
   dimension_origin: string;
 }
 
-class Channel extends Model<ChannelAttributes> implements ChannelAttributes {
+// Interface for Channel creation attributes (id is optional)
+interface ChannelCreationAttributes extends Optional<ChannelAttributes, 'id'> {}
+
+// Sequelize Model for Channel
+export class Channel
+  extends Model<ChannelAttributes, ChannelCreationAttributes>
+  implements ChannelAttributes
+{
   public id!: number;
   public name!: string;
   public description!: string;
   public dimension_origin!: string;
+
+  // --- Static Methods ---
+  /**
+   * Finds a channel by its primary key.
+   * @param id The ID of the channel.
+   */
+  public static async findById(id: number): Promise<Channel | null> {
+    return this.findByPk(id);
+  }
 }
 
 Channel.init(

@@ -1,8 +1,8 @@
 import { sequelize } from './connection';
-import { Package } from '../models/Package';
-import Channel from '../models/Channel';
-import { Subscription } from '../models/Subscription'; // Asegúrate de importar Subscription
-import '../models/index'; // Importar el archivo de asociaciones
+import { Package } from '../../models/Package';
+import Channel from '../../models/Channel';
+import { Subscription } from '../../models/Subscription'; // Asegúrate de importar Subscription
+import '../../models/index'; // Importar el archivo de asociaciones
 
 // Sample data for seeding
 const packagesData = [
