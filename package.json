@@ -11,7 +11,7 @@
     "docker:prod": "scripts\\prod.bat",
     "docker:clean": "scripts\\clean.bat",
     "docker:logs": "docker-compose logs -f",
-    "db:seed": "ts-node src/database/seed.ts"
+    "db:seed": "ts-node src/config/database/seed.ts"
   },
   "keywords": [
     "api",
