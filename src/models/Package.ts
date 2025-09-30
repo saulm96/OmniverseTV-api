@@ -5,7 +5,7 @@ import {
   BelongsToManyAddAssociationsMixin,
   BelongsToManyGetAssociationsMixin,
 } from 'sequelize';
-import { sequelize } from '../database/connection';
+import { sequelize } from '../config/database/connection';
 import Channel from './Channel';
 
 // Interface for Package attributes

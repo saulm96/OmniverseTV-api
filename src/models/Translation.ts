@@ -1,66 +1,97 @@
-import { DataTypes, Model } from 'sequelize';
-import { sequelize } from '../database/connection';
+import { Model, DataTypes, Optional } from 'sequelize';
+import { sequelize } from '../config/database/connection'; // <- Updated path
 
-type ItemType = 'package' | 'channel';
-
-interface TranslationAttributes {
-  id?: number;
-  item_type: ItemType;
-  item_id: number;
-  language_code: string;
-  field: string;
-  translated_text: string;
+// Interface for Translation attributes
+export interface TranslationAttributes {
+  id: number;
+  itemType: 'package' | 'channel';
+  itemId: number;
+  languageCode: string;
+  translatedName: string;
+  translatedDescription: string;
 }
 
-class Translation extends Model<TranslationAttributes> implements TranslationAttributes {
+// Interface for Translation creation (id is optional)
+interface TranslationCreationAttributes
+  extends Optional<TranslationAttributes, 'id'> {}
+
+// Sequelize Model for Translation
+export class Translation
+  extends Model<TranslationAttributes, TranslationCreationAttributes>
+  implements TranslationAttributes
+{
   public id!: number;
-  public item_type!: ItemType;
-  public item_id!: number;
-  public language_code!: string;
-  public field!: string;
-  public translated_text!: string;
+  public itemType!: 'package' | 'channel';
+  public itemId!: number;
+  public languageCode!: string;
+  public translatedName!: string;
+  public translatedDescription!: string;
+
+  // Timestamps
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+
+  // --- Static Methods ---
+  /**
+   * Finds an existing translation for a specific item and language.
+   * @param itemType - The type of item ('package' or 'channel').
+   * @param itemId - The ID of the item.
+   * @param languageCode - The language code (e.g., 'fr', 'es').
+   */
+  public static async findExisting(
+    itemType: 'package' | 'channel',
+    itemId: number,
+    languageCode: string
+  ): Promise<Translation | null> {
+    return this.findOne({
+      where: {
+        itemType,
+        itemId,
+        languageCode,
+      },
+    });
+  }
 }
 
+// Initialize the Translation model
 Translation.init(
   {
     id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER.UNSIGNED,
       autoIncrement: true,
       primaryKey: true,
     },
-    item_type: {
+    itemType: {
       type: DataTypes.ENUM('package', 'channel'),
       allowNull: false,
     },
-    item_id: {
-      type: DataTypes.INTEGER,
+    itemId: {
+      type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
-    language_code: {
-      type: DataTypes.STRING(5),
+    languageCode: {
+      type: new DataTypes.STRING(5), //'es', 'fr', 'en-US'
       allowNull: false,
     },
-    field: {
-      type: DataTypes.STRING,
+    translatedName: {
+      type: new DataTypes.STRING(255),
       allowNull: false,
     },
-    translated_text: {
+    translatedDescription: {
       type: DataTypes.TEXT,
       allowNull: false,
     },
   },
   {
+    tableName: 'translations',
     sequelize,
-    modelName: 'Translation',
-    timestamps: false,
-    // Create a composite index to optimize translation searches
+    // Create a unique index to prevent duplicate translations
     indexes: [
       {
         unique: true,
-        fields: ['item_type', 'item_id', 'language_code', 'field'],
+        fields: ['itemType', 'itemId', 'languageCode'],
       },
     ],
   }
 );
 
-export default Translation;
