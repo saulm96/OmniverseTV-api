@@ -11,7 +11,7 @@
     "docker:prod": "scripts\\prod.bat",
     "docker:clean": "scripts\\clean.bat",
     "docker:logs": "docker-compose logs -f",
-    "db:seed": "ts-node src/database/seed.ts"
+    "db:seed": "ts-node src/config/database/seed.ts"
   },
   "keywords": [
     "api",
@@ -31,7 +31,8 @@
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.9.7",
     "redis": "^4.6.13",
-    "sequelize": "^6.37.3"
+    "sequelize": "^6.37.3",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

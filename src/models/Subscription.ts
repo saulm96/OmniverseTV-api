@@ -1,5 +1,5 @@
 import { Model, DataTypes, Optional } from 'sequelize';
-import { sequelize } from '../database/connection';
+import { sequelize } from '../config/database/connection';
 import { Package } from './Package';
 import { NotFoundError } from '../utils/errors';
 

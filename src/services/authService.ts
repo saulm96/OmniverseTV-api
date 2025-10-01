@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { User } from "../models";
 import type { UserAttributes } from "../models/User";
-import { generateAuthTokens } from "../utils/jwt";
+import { generateAuthTokens, verifyRefreshToken } from "../utils/jwt";
 import {
   ConflictError,
   NotFoundError,
@@ -49,3 +49,32 @@ export const loginUser = async (
 
   return tokens;
 };
+
+
+/**
+ * Refreshes a user's session by generating a new access token.
+ * @param token The refresh token from the user's cookie.
+ * @returns A new access token.
+ */
+export const refreshUserSession = async (token: string) => {
+  if (!token) {
+      throw new UnauthorizedError('No refresh token provided.');
+  }
+
+  // 1. Verify the refresh token
+  const decoded = verifyRefreshToken(token);
+  if (!decoded.userId) {
+      throw new UnauthorizedError('Invalid refresh token.');
+  }
+
+  // 2. Find the user associated with the token
+  const user = await User.findByPk(decoded.userId);
+  if (!user) {
+      throw new UnauthorizedError('User for this token no longer exists.');
+  }
+
+  // 3. Generate a new access token
+  const { accessToken: newAccessToken } = generateAuthTokens(user);
+
+  return { newAccessToken };
+}

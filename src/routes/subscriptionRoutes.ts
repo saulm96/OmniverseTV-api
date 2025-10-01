@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { createSubscription, getUserSubscriptions, cancelSubscription } from '../controllers/subscriptionController';
 import { protect } from '../middlewares/authMiddleware';
+import { validateRequest } from '../middlewares/validationMiddleware';
+import { createSubscriptionSchema, cancelSubscriptionSchema } from '../schemas/subscriptionSchemas';
 
 const router = Router();
 
@@ -8,7 +10,7 @@ const router = Router();
 router.use(protect);
 
 router.get('/', getUserSubscriptions);
-router.post('/', createSubscription);
-router.patch('/:id', cancelSubscription);
+router.post('/', validateRequest(createSubscriptionSchema), createSubscription);
+router.patch('/:id', validateRequest(cancelSubscriptionSchema), cancelSubscription);
 
 export default router;
