@@ -3,7 +3,8 @@ import { Translation } from '../models/Translation';
 
 // Interface for the job data
 interface TranslationJobData {
-  packageId: number;
+  itemType: 'package' | "channel";
+  itemId: number;
   languageCode: string;
   originalName: string;
   originalDescription: string;
@@ -27,10 +28,10 @@ const mockTranslateAPI = (text: string, lang: string): string => {
  * @param job - The BullMQ job object.
  */
 export const processTranslationJob = async (job: Job<TranslationJobData>) => {
-  const { packageId, languageCode, originalName, originalDescription } =
+  const { itemType, itemId, languageCode, originalName, originalDescription } =
     job.data;
 
-  // 1. Simulate the call to the translation API
+  // 1. Simulate the call to the translation API.
   const translatedName = mockTranslateAPI(originalName, languageCode);
   const translatedDescription = mockTranslateAPI(
     originalDescription,
@@ -38,16 +39,17 @@ export const processTranslationJob = async (job: Job<TranslationJobData>) => {
   );
 
   // 2. Save the result in the database.
+  // This logic now works for any itemType passed in the job data.
   const [translation, created] = await Translation.findOrCreate({
     where: {
-      itemType: 'package',
-      itemId: packageId,
-      languageCode: languageCode,
+      itemType,
+      itemId,
+      languageCode,
     },
     defaults: {
-      itemType: 'package',
-      itemId: packageId,
-      languageCode: languageCode,
+      itemType,
+      itemId,
+      languageCode,
       translatedName,
       translatedDescription,
     },
@@ -55,11 +57,11 @@ export const processTranslationJob = async (job: Job<TranslationJobData>) => {
 
   if (created) {
     console.log(
-      `   - Translation saved in the database with ID: ${translation.id}`
+      `   - Translation for ${itemType} #${itemId} saved with ID: ${translation.id}`
     );
   } else {
     console.log(
-      `   - The translation already existed in the database. No new entry was created.`
+      `   - Translation for ${itemType} #${itemId} already existed. No new entry created.`
     );
   }
 };

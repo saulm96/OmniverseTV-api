@@ -1,56 +1,44 @@
-import { Package } from '../models/Package';
+import { Channel } from '../models/Channel';
 import { Translation } from '../models/Translation';
 import { NotFoundError } from '../utils/errors';
 import { translationQueue } from '../queues/translationQueue';
 import { redisClient } from '../config/reddis/reddisClient';
 
-// Defines the shape of the API response for a package.
-interface TranslatedPackageResponse {
+// Defines the shape of the API response for a channel.
+interface TranslatedChannelResponse {
   id: number;
   name: string;
   description: string;
-  price: string;
-  createdAt: Date;
-  updatedAt: Date;
-  channels: any[];
+  dimension_origin: string;
   translation?: {
-    status: 'completed' | 'pending';
     languageCode: string;
     name?: string;
     description?: string;
+    status: 'completed' | 'pending';
   };
 }
 
 /**
- * Retrieves all packages from the database.
- */
-export const getAllPackages = async (): Promise<Package[]> => {
-  return Package.findAllPackages();
-};
-
-/**
- * Retrieves a package by its ID, handling the translation logic.
- * @param packageId - The ID of the package.
+ * Retrieves a channel by its ID, handling the translation logic.
+ * @param channelId - The ID of the channel.
  * @param languageCode - The optional language code for the translation.
  */
-export const getPackageById = async (
-  packageId: number,
+export const getChannelById = async (
+  channelId: number,
   languageCode?: string
-): Promise<TranslatedPackageResponse> => {
-  // 1. Fetch the original package with its channels.
-  const tvPackage = await Package.findByIdWithChannels(packageId);
-  if (!tvPackage) {
-    throw new NotFoundError(`Package with ID ${packageId} not found.`);
+): Promise<TranslatedChannelResponse> => {
+  const channel = await Channel.findById(channelId);
+  if (!channel) {
+    throw new NotFoundError(`Channel with ID ${channelId} not found.`);
   }
 
-  const response = tvPackage.toJSON() as unknown as TranslatedPackageResponse;
+  const response = channel.toJSON() as unknown as TranslatedChannelResponse;
 
   if (!languageCode) {
     return response;
   }
 
-  // 2. If translation is requested, check the cache first.
-  const cacheKey = `translation:package:${packageId}:${languageCode}`;
+  const cacheKey = `translation:channel:${channelId}:${languageCode}`;
   const cachedTranslation = await redisClient.get(cacheKey);
 
   if (cachedTranslation) {
@@ -59,10 +47,9 @@ export const getPackageById = async (
     return response;
   }
 
-  // 3. If not in cache, check the database.
   const dbTranslation = await Translation.findExisting(
-    'package',
-    packageId,
+    'channel',
+    channelId,
     languageCode
   );
 
@@ -79,17 +66,15 @@ export const getPackageById = async (
     return response;
   }
 
-  // 4. If it doesn't exist anywhere, add a job and return a 'pending' status.
   console.log(`TRANSLATION MISS: Adding job to the queue for ${cacheKey}`);
   await translationQueue.add('translate', {
-    itemType: 'package',
-    itemId: packageId,
+    itemType: 'channel',
+    itemId: channelId,
     languageCode,
-    originalName: tvPackage.name,
-    originalDescription: tvPackage.description,
+    originalName: channel.name,
+    originalDescription: channel.description,
   });
 
-  // Add the 'pending' translation object to the response as a signal for the frontend.
   response.translation = {
     languageCode,
     status: 'pending',
@@ -97,5 +82,4 @@ export const getPackageById = async (
 
   return response;
 };
-
 
