@@ -3,6 +3,7 @@ import { Translation } from '../models/Translation';
 import { NotFoundError } from '../utils/errors';
 import { translationQueue } from '../queues/translationQueue';
 import { redisClient } from '../config/reddis/reddisClient';
+import { getPendingMessage } from '../utils/localization';
 
 // Defines the shape of the API response for a package.
 interface TranslatedPackageResponse {
@@ -18,6 +19,7 @@ interface TranslatedPackageResponse {
     languageCode: string;
     name?: string;
     description?: string;
+    message?: string;
   };
 }
 
@@ -93,6 +95,7 @@ export const getPackageById = async (
   response.translation = {
     languageCode,
     status: 'pending',
+    message: getPendingMessage(languageCode),
   };
 
   return response;

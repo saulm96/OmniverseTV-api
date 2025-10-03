@@ -9,11 +9,14 @@ services:
       - REDIS_PORT=6379
       - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - DEEPL_API_KEY=${DEEPL_API_KEY}
     depends_on:
       database:
         condition: service_healthy
       cache:
         condition: service_started
+    dns:
+      - 8.8.8.8
     networks:
       - omniverse-net
 
@@ -27,6 +30,8 @@ services:
         condition: service_healthy
       cache:
         condition: service_started
+    dns:
+      - 8.8.8.8
     networks:
       - omniverse-net
 
@@ -70,3 +75,4 @@ networks:
 volumes:
   db_data:
   cache_data:
+

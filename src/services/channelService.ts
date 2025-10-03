@@ -3,6 +3,7 @@ import { Translation } from '../models/Translation';
 import { NotFoundError } from '../utils/errors';
 import { translationQueue } from '../queues/translationQueue';
 import { redisClient } from '../config/reddis/reddisClient';
+import { getPendingMessage } from '../utils/localization';
 
 // Defines the shape of the API response for a channel.
 interface TranslatedChannelResponse {
@@ -15,6 +16,7 @@ interface TranslatedChannelResponse {
     name?: string;
     description?: string;
     status: 'completed' | 'pending';
+    message?: string;
   };
 }
 
@@ -78,6 +80,7 @@ export const getChannelById = async (
   response.translation = {
     languageCode,
     status: 'pending',
+    message: getPendingMessage(languageCode),
   };
 
   return response;
