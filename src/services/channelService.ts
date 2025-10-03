@@ -68,14 +68,25 @@ export const getChannelById = async (
     return response;
   }
 
-  console.log(`TRANSLATION MISS: Adding job to the queue for ${cacheKey}`);
-  await translationQueue.add('translate', {
-    itemType: 'channel',
-    itemId: channelId,
-    languageCode,
-    originalName: channel.name,
-    originalDescription: channel.description,
+  // 4. If it doesn't exist, try to acquire a lock to prevent duplicate jobs.
+  const lockKey = `lock:translation:channel:${channelId}:${languageCode}`;
+  const lockAcquired = await redisClient.set(lockKey, 'processing', {
+    EX: 300,
+    NX: true,
   });
+
+  if (lockAcquired) {
+    console.log(`TRANSLATION MISS & LOCK ACQUIRED: Adding job for ${cacheKey}`);
+    await translationQueue.add('translate', {
+      itemType: 'channel',
+      itemId: channelId,
+      languageCode,
+      originalName: channel.name,
+      originalDescription: channel.description,
+    });
+  } else {
+    console.log(`TRANSLATION MISS & LOCK EXISTS: Job already in progress for ${cacheKey}`);
+  }
 
   response.translation = {
     languageCode,

@@ -15,10 +15,10 @@ interface TranslatedPackageResponse {
   updatedAt: Date;
   channels: any[];
   translation?: {
-    status: 'completed' | 'pending';
     languageCode: string;
     name?: string;
     description?: string;
+    status: 'completed' | 'pending';
     message?: string;
   };
 }
@@ -39,7 +39,6 @@ export const getPackageById = async (
   packageId: number,
   languageCode?: string
 ): Promise<TranslatedPackageResponse> => {
-  // 1. Fetch the original package with its channels.
   const tvPackage = await Package.findByIdWithChannels(packageId);
   if (!tvPackage) {
     throw new NotFoundError(`Package with ID ${packageId} not found.`);
@@ -51,7 +50,6 @@ export const getPackageById = async (
     return response;
   }
 
-  // 2. If translation is requested, check the cache first.
   const cacheKey = `translation:package:${packageId}:${languageCode}`;
   const cachedTranslation = await redisClient.get(cacheKey);
 
@@ -61,7 +59,6 @@ export const getPackageById = async (
     return response;
   }
 
-  // 3. If not in cache, check the database.
   const dbTranslation = await Translation.findExisting(
     'package',
     packageId,
@@ -81,17 +78,28 @@ export const getPackageById = async (
     return response;
   }
 
-  // 4. If it doesn't exist anywhere, add a job and return a 'pending' status.
-  console.log(`TRANSLATION MISS: Adding job to the queue for ${cacheKey}`);
-  await translationQueue.add('translate', {
-    itemType: 'package',
-    itemId: packageId,
-    languageCode,
-    originalName: tvPackage.name,
-    originalDescription: tvPackage.description,
+  // 4. If it doesn't exist, try to acquire a lock to prevent duplicate jobs.
+  const lockKey = `lock:translation:package:${packageId}:${languageCode}`;
+  // 'NX: true' means "set only if the key does not already exist". This is an atomic lock.
+  const lockAcquired = await redisClient.set(lockKey, 'processing', {
+    EX: 300, // Lock expires in 5 minutes to prevent it from getting stuck.
+    NX: true,
   });
 
-  // Add the 'pending' translation object to the response as a signal for the frontend.
+  if (lockAcquired) {
+    console.log(`TRANSLATION MISS & LOCK ACQUIRED: Adding job for ${cacheKey}`);
+    await translationQueue.add('translate', {
+      itemType: 'package',
+      itemId: packageId,
+      languageCode,
+      originalName: tvPackage.name,
+      originalDescription: tvPackage.description,
+    });
+  } else {
+    console.log(`TRANSLATION MISS & LOCK EXISTS: Job already in progress for ${cacheKey}`);
+  }
+
+  // In both cases (lock acquired or not), return a 'pending' status.
   response.translation = {
     languageCode,
     status: 'pending',
@@ -100,5 +108,4 @@ export const getPackageById = async (
 
   return response;
 };
-
 
