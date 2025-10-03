@@ -1,9 +1,8 @@
 import { Job } from 'bullmq';
 import { Translation } from '../models/Translation';
 import { fetchTranslation } from '../utils/translator';
-import { redisClient } from '../config/reddis/reddisClient'; // Import Redis client
+import { redisClient } from '../config/reddis/reddisClient';
 
-// Interface for the job data
 interface TranslationJobData {
   itemType: 'package' | 'channel';
   itemId: number;
@@ -19,8 +18,6 @@ interface TranslationJobData {
 export const processTranslationJob = async (job: Job<TranslationJobData>) => {
   const { itemType, itemId, languageCode, originalName, originalDescription } =
     job.data;
-
-  // Reconstruct the lock key to release it after processing
   const lockKey = `lock:translation:${itemType}:${itemId}:${languageCode}`;
 
   console.log(
@@ -28,13 +25,11 @@ export const processTranslationJob = async (job: Job<TranslationJobData>) => {
   );
 
   try {
-    // 1. Call the translation utility for both texts.
     const [translatedName, translatedDescription] = await Promise.all([
       fetchTranslation(originalName, languageCode),
       fetchTranslation(originalDescription, languageCode),
     ]);
 
-    // 2. Save the result in the database.
     const [translation, created] = await Translation.findOrCreate({
       where: {
         itemType,
@@ -65,8 +60,6 @@ export const processTranslationJob = async (job: Job<TranslationJobData>) => {
     );
     throw error;
   } finally {
-    // This block runs whether the job succeeds or fails.
-    // It's crucial to release the lock so new jobs can be created in the future.
     console.log(`-------> Releasing lock for ${lockKey}`);
     await redisClient.del(lockKey);
   }

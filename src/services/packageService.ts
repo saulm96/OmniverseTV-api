@@ -5,7 +5,7 @@ import { translationQueue } from '../queues/translationQueue';
 import { redisClient } from '../config/reddis/reddisClient';
 import { getPendingMessage } from '../utils/localization';
 
-// Defines the shape of the API response for a package.
+// Define la forma de la respuesta de la API para un paquete.
 interface TranslatedPackageResponse {
   id: number;
   name: string;
@@ -78,28 +78,35 @@ export const getPackageById = async (
     return response;
   }
 
-  // 4. If it doesn't exist, try to acquire a lock to prevent duplicate jobs.
   const lockKey = `lock:translation:package:${packageId}:${languageCode}`;
-  // 'NX: true' means "set only if the key does not already exist". This is an atomic lock.
   const lockAcquired = await redisClient.set(lockKey, 'processing', {
-    EX: 300, // Lock expires in 5 minutes to prevent it from getting stuck.
+    EX: 300,
     NX: true,
   });
 
   if (lockAcquired) {
     console.log(`TRANSLATION MISS & LOCK ACQUIRED: Adding job for ${cacheKey}`);
-    await translationQueue.add('translate', {
-      itemType: 'package',
-      itemId: packageId,
-      languageCode,
-      originalName: tvPackage.name,
-      originalDescription: tvPackage.description,
-    });
+    await translationQueue.add(
+      'translate',
+      {
+        itemType: 'package',
+        itemId: packageId,
+        languageCode,
+        originalName: tvPackage.name,
+        originalDescription: tvPackage.description,
+      },
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+      }
+    );
   } else {
     console.log(`TRANSLATION MISS & LOCK EXISTS: Job already in progress for ${cacheKey}`);
   }
 
-  // In both cases (lock acquired or not), return a 'pending' status.
   response.translation = {
     languageCode,
     status: 'pending',

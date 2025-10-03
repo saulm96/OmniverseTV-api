@@ -5,7 +5,7 @@ import { translationQueue } from '../queues/translationQueue';
 import { redisClient } from '../config/reddis/reddisClient';
 import { getPendingMessage } from '../utils/localization';
 
-// Defines the shape of the API response for a channel.
+// Define the response format for a channel in the API.
 interface TranslatedChannelResponse {
   id: number;
   name: string;
@@ -68,7 +68,6 @@ export const getChannelById = async (
     return response;
   }
 
-  // 4. If it doesn't exist, try to acquire a lock to prevent duplicate jobs.
   const lockKey = `lock:translation:channel:${channelId}:${languageCode}`;
   const lockAcquired = await redisClient.set(lockKey, 'processing', {
     EX: 300,
@@ -77,13 +76,23 @@ export const getChannelById = async (
 
   if (lockAcquired) {
     console.log(`TRANSLATION MISS & LOCK ACQUIRED: Adding job for ${cacheKey}`);
-    await translationQueue.add('translate', {
-      itemType: 'channel',
-      itemId: channelId,
-      languageCode,
-      originalName: channel.name,
-      originalDescription: channel.description,
-    });
+    await translationQueue.add(
+      'translate',
+      {
+        itemType: 'channel',
+        itemId: channelId,
+        languageCode,
+        originalName: channel.name,
+        originalDescription: channel.description,
+      },
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+      }
+    );
   } else {
     console.log(`TRANSLATION MISS & LOCK EXISTS: Job already in progress for ${cacheKey}`);
   }
