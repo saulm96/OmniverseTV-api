@@ -1,6 +1,7 @@
 import { Job } from 'bullmq';
 import { Translation } from '../models/Translation';
 import { fetchTranslation } from '../utils/translator';
+import { redisClient } from '../config/reddis/reddisClient'; // Import Redis client
 
 // Interface for the job data
 interface TranslationJobData {
@@ -19,13 +20,15 @@ export const processTranslationJob = async (job: Job<TranslationJobData>) => {
   const { itemType, itemId, languageCode, originalName, originalDescription } =
     job.data;
 
+  // Reconstruct the lock key to release it after processing
+  const lockKey = `lock:translation:${itemType}:${itemId}:${languageCode}`;
+
   console.log(
     `-------> Starting translation for ${itemType} #${itemId} to ${languageCode.toUpperCase()}...`
   );
 
   try {
     // 1. Call the translation utility for both texts.
-    // We use Promise.all to run both API calls in parallel.
     const [translatedName, translatedDescription] = await Promise.all([
       fetchTranslation(originalName, languageCode),
       fetchTranslation(originalDescription, languageCode),
@@ -57,12 +60,15 @@ export const processTranslationJob = async (job: Job<TranslationJobData>) => {
       );
     }
   } catch (error: any) {
-    // This block will catch any error thrown from fetchTranslation.
     console.error(
       `🔴 [PROCESSOR] Failed to process translation job #${job.id}. Reason: ${error.message}`
     );
-    // By re-throwing the error, we ensure the BullMQ job is marked as failed.
     throw error;
+  } finally {
+    // This block runs whether the job succeeds or fails.
+    // It's crucial to release the lock so new jobs can be created in the future.
+    console.log(`-------> Releasing lock for ${lockKey}`);
+    await redisClient.del(lockKey);
   }
 };
 
