@@ -3,8 +3,9 @@ import { Translation } from '../models/Translation';
 import { NotFoundError } from '../utils/errors';
 import { translationQueue } from '../queues/translationQueue';
 import { redisClient } from '../config/reddis/reddisClient';
+import { getPendingMessage } from '../utils/localization';
 
-// Defines the shape of the API response for a package.
+// Define la forma de la respuesta de la API para un paquete.
 interface TranslatedPackageResponse {
   id: number;
   name: string;
@@ -14,10 +15,11 @@ interface TranslatedPackageResponse {
   updatedAt: Date;
   channels: any[];
   translation?: {
-    status: 'completed' | 'pending';
     languageCode: string;
     name?: string;
     description?: string;
+    status: 'completed' | 'pending';
+    message?: string;
   };
 }
 
@@ -37,7 +39,6 @@ export const getPackageById = async (
   packageId: number,
   languageCode?: string
 ): Promise<TranslatedPackageResponse> => {
-  // 1. Fetch the original package with its channels.
   const tvPackage = await Package.findByIdWithChannels(packageId);
   if (!tvPackage) {
     throw new NotFoundError(`Package with ID ${packageId} not found.`);
@@ -49,7 +50,6 @@ export const getPackageById = async (
     return response;
   }
 
-  // 2. If translation is requested, check the cache first.
   const cacheKey = `translation:package:${packageId}:${languageCode}`;
   const cachedTranslation = await redisClient.get(cacheKey);
 
@@ -59,7 +59,6 @@ export const getPackageById = async (
     return response;
   }
 
-  // 3. If not in cache, check the database.
   const dbTranslation = await Translation.findExisting(
     'package',
     packageId,
@@ -79,23 +78,41 @@ export const getPackageById = async (
     return response;
   }
 
-  // 4. If it doesn't exist anywhere, add a job and return a 'pending' status.
-  console.log(`TRANSLATION MISS: Adding job to the queue for ${cacheKey}`);
-  await translationQueue.add('translate', {
-    itemType: 'package',
-    itemId: packageId,
-    languageCode,
-    originalName: tvPackage.name,
-    originalDescription: tvPackage.description,
+  const lockKey = `lock:translation:package:${packageId}:${languageCode}`;
+  const lockAcquired = await redisClient.set(lockKey, 'processing', {
+    EX: 300,
+    NX: true,
   });
 
-  // Add the 'pending' translation object to the response as a signal for the frontend.
+  if (lockAcquired) {
+    console.log(`TRANSLATION MISS & LOCK ACQUIRED: Adding job for ${cacheKey}`);
+    await translationQueue.add(
+      'translate',
+      {
+        itemType: 'package',
+        itemId: packageId,
+        languageCode,
+        originalName: tvPackage.name,
+        originalDescription: tvPackage.description,
+      },
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+      }
+    );
+  } else {
+    console.log(`TRANSLATION MISS & LOCK EXISTS: Job already in progress for ${cacheKey}`);
+  }
+
   response.translation = {
     languageCode,
     status: 'pending',
+    message: getPendingMessage(languageCode),
   };
 
   return response;
 };
-
 

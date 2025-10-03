@@ -3,8 +3,9 @@ import { Translation } from '../models/Translation';
 import { NotFoundError } from '../utils/errors';
 import { translationQueue } from '../queues/translationQueue';
 import { redisClient } from '../config/reddis/reddisClient';
+import { getPendingMessage } from '../utils/localization';
 
-// Defines the shape of the API response for a channel.
+// Define the response format for a channel in the API.
 interface TranslatedChannelResponse {
   id: number;
   name: string;
@@ -15,6 +16,7 @@ interface TranslatedChannelResponse {
     name?: string;
     description?: string;
     status: 'completed' | 'pending';
+    message?: string;
   };
 }
 
@@ -66,18 +68,39 @@ export const getChannelById = async (
     return response;
   }
 
-  console.log(`TRANSLATION MISS: Adding job to the queue for ${cacheKey}`);
-  await translationQueue.add('translate', {
-    itemType: 'channel',
-    itemId: channelId,
-    languageCode,
-    originalName: channel.name,
-    originalDescription: channel.description,
+  const lockKey = `lock:translation:channel:${channelId}:${languageCode}`;
+  const lockAcquired = await redisClient.set(lockKey, 'processing', {
+    EX: 300,
+    NX: true,
   });
+
+  if (lockAcquired) {
+    console.log(`TRANSLATION MISS & LOCK ACQUIRED: Adding job for ${cacheKey}`);
+    await translationQueue.add(
+      'translate',
+      {
+        itemType: 'channel',
+        itemId: channelId,
+        languageCode,
+        originalName: channel.name,
+        originalDescription: channel.description,
+      },
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+      }
+    );
+  } else {
+    console.log(`TRANSLATION MISS & LOCK EXISTS: Job already in progress for ${cacheKey}`);
+  }
 
   response.translation = {
     languageCode,
     status: 'pending',
+    message: getPendingMessage(languageCode),
   };
 
   return response;

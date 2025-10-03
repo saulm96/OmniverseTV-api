@@ -1,27 +1,15 @@
 import { Job } from 'bullmq';
 import { Translation } from '../models/Translation';
+import { fetchTranslation } from '../utils/translator';
+import { redisClient } from '../config/reddis/reddisClient';
 
-// Interface for the job data
 interface TranslationJobData {
-  itemType: 'package' | "channel";
+  itemType: 'package' | 'channel';
   itemId: number;
   languageCode: string;
   originalName: string;
   originalDescription: string;
 }
-
-/**
- * Simulates a call to an external translation API.
- * @param text - The text to translate.
- * @param lang - The language code.
- * @returns The "translated" text.
- */
-const mockTranslateAPI = (text: string, lang: string): string => {
-  // In a real app, you would call a service like Google Translate here.
-  // We'll just append the language code for a cleaner simulation.
-  console.log(`   - Simulating translation of "${text}" to ${lang}...`);
-  return `${text}`;
-};
 
 /**
  * Processes a translation job: it "translates" and saves it to the database.
@@ -30,38 +18,50 @@ const mockTranslateAPI = (text: string, lang: string): string => {
 export const processTranslationJob = async (job: Job<TranslationJobData>) => {
   const { itemType, itemId, languageCode, originalName, originalDescription } =
     job.data;
+  const lockKey = `lock:translation:${itemType}:${itemId}:${languageCode}`;
 
-  // 1. Simulate the call to the translation API.
-  const translatedName = mockTranslateAPI(originalName, languageCode);
-  const translatedDescription = mockTranslateAPI(
-    originalDescription,
-    languageCode
+  console.log(
+    `-------> Starting translation for ${itemType} #${itemId} to ${languageCode.toUpperCase()}...`
   );
 
-  // 2. Save the result in the database.
-  // This logic now works for any itemType passed in the job data.
-  const [translation, created] = await Translation.findOrCreate({
-    where: {
-      itemType,
-      itemId,
-      languageCode,
-    },
-    defaults: {
-      itemType,
-      itemId,
-      languageCode,
-      translatedName,
-      translatedDescription,
-    },
-  });
+  try {
+    const [translatedName, translatedDescription] = await Promise.all([
+      fetchTranslation(originalName, languageCode),
+      fetchTranslation(originalDescription, languageCode),
+    ]);
 
-  if (created) {
-    console.log(
-      `   - Translation for ${itemType} #${itemId} saved with ID: ${translation.id}`
+    const [translation, created] = await Translation.findOrCreate({
+      where: {
+        itemType,
+        itemId,
+        languageCode,
+      },
+      defaults: {
+        itemType,
+        itemId,
+        languageCode,
+        translatedName,
+        translatedDescription,
+      },
+    });
+
+    if (created) {
+      console.log(
+        `-------> Translation for ${itemType} #${itemId} saved with ID: ${translation.id}`
+      );
+    } else {
+      console.log(
+        `-------> Translation for ${itemType} #${itemId} already existed.`
+      );
+    }
+  } catch (error: any) {
+    console.error(
+      `🔴 [PROCESSOR] Failed to process translation job #${job.id}. Reason: ${error.message}`
     );
-  } else {
-    console.log(
-      `   - Translation for ${itemType} #${itemId} already existed. No new entry created.`
-    );
+    throw error;
+  } finally {
+    console.log(`-------> Releasing lock for ${lockKey}`);
+    await redisClient.del(lockKey);
   }
 };
+
