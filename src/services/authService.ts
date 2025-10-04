@@ -8,6 +8,23 @@ import {
   UnauthorizedError,
 } from "../utils/errors";
 
+/**
+ * Registers a new user in the system
+ * 
+ * @param userData - User data excluding the auto-generated id
+ * @returns Sanitized user object without sensitive data
+ * @throws {ConflictError} If email already exists
+ * 
+ * @example
+ * ```typescript
+ * const user = await registerUser({
+ *   username: 'johndoe',
+ *   email: 'john@example.com',
+ *   password_hash: 'plainPassword123',
+ *   preferred_language: 'en'
+ * });
+ * ```
+ */
 export const registerUser = async (userData: Omit<UserAttributes, "id">) => {
   const { username, email, password_hash, preferred_language } = userData;
 
@@ -22,6 +39,7 @@ export const registerUser = async (userData: Omit<UserAttributes, "id">) => {
     password_hash,
     preferred_language,
   });
+  
   return {
     id: newUser.id,
     username: newUser.username,
@@ -30,6 +48,22 @@ export const registerUser = async (userData: Omit<UserAttributes, "id">) => {
   };
 };
 
+/**
+ * Authenticates a user and generates JWT tokens
+ * 
+ * @param credentials - User email and password
+ * @returns Object containing access and refresh tokens
+ * @throws {NotFoundError} If user doesn't exist
+ * @throws {UnauthorizedError} If password is incorrect
+ * 
+ * @example
+ * ```typescript
+ * const tokens = await loginUser({
+ *   email: 'john@example.com',
+ *   password_hash: 'plainPassword123'
+ * });
+ * ```
+ */
 export const loginUser = async (
   credentials: Pick<UserAttributes, "email" | "password_hash">
 ) => {
@@ -50,31 +84,34 @@ export const loginUser = async (
   return tokens;
 };
 
-
 /**
- * Refreshes a user's session by generating a new access token.
- * @param token The refresh token from the user's cookie.
- * @returns A new access token.
+ * Refreshes a user's session by generating a new access token
+ * 
+ * @param token - The refresh token from the user's cookie
+ * @returns Object containing the new access token
+ * @throws {UnauthorizedError} If token is missing, invalid, or user doesn't exist
+ * 
+ * @example
+ * ```typescript
+ * const { newAccessToken } = await refreshUserSession(refreshToken);
+ * ```
  */
 export const refreshUserSession = async (token: string) => {
   if (!token) {
-      throw new UnauthorizedError('No refresh token provided.');
+    throw new UnauthorizedError('No refresh token provided.');
   }
 
-  // 1. Verify the refresh token
   const decoded = verifyRefreshToken(token);
   if (!decoded.userId) {
-      throw new UnauthorizedError('Invalid refresh token.');
+    throw new UnauthorizedError('Invalid refresh token.');
   }
 
-  // 2. Find the user associated with the token
   const user = await User.findByPk(decoded.userId);
   if (!user) {
-      throw new UnauthorizedError('User for this token no longer exists.');
+    throw new UnauthorizedError('User for this token no longer exists.');
   }
 
-  // 3. Generate a new access token
   const { accessToken: newAccessToken } = generateAuthTokens(user);
 
   return { newAccessToken };
-}
+};
