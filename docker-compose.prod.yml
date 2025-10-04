@@ -26,3 +26,16 @@ services:
         limits:
           cpus: '0.25'
           memory: 256M
+
+  scheduler:
+    build:
+      target: production
+    environment:
+      - NODE_ENV=production
+    command: ["node", "dist/scheduler.js"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
