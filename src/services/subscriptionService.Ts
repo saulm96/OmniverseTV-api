@@ -1,6 +1,7 @@
 import { Subscription } from '../models/Subscription';
 import { Package } from '../models/Package';
 import { ConflictError, NotFoundError } from '../utils/errors';
+import { subscriptionQueue } from '../queues/subscriptionQueue';
 
 /**
  * Creates a new subscription for a user to a specific package.
@@ -12,50 +13,43 @@ export const createSubscription = async (
   userId: number,
   packageId: number
 ): Promise<Subscription> => {
-  try {
-    console.log('Creating subscription for userId:', userId, 'packageId:', packageId);
-    
-    // Verificar que los parámetros sean válidos
-    if (!userId || !packageId) {
-      throw new Error('UserId and packageId are required');
-    }
-    
-    console.log('Searching for package...');
-    const tvPackage = await Package.findById(packageId);
-    console.log('Package found:', tvPackage ? 'Yes' : 'No');
-    
-    if (!tvPackage) {
-      throw new NotFoundError(`Package with ID ${packageId} not found.`);
-    }
-
-    console.log('Checking for existing subscription...');
-    const existingSubscription = await Subscription.findExisting(
-      userId,
-      packageId
-    );
-    console.log('Existing subscription found:', existingSubscription ? 'Yes' : 'No');
-
-    if (existingSubscription) {
-      throw new ConflictError('User is already subscribed to this package.');
-    }
-
-    console.log('Creating new subscription...');
-    const subscription = await Subscription.create({
-      userId,
-      packageId,
-      startDate: new Date(),
-      endDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
-      status: 'active',
-      cancelledAt: null,
-    });
-
-    console.log('Subscription created successfully:', subscription.id);
-    return subscription;
-    
-  } catch (error) {
-    console.error('Error in createSubscription:', error);
-    throw error;
+  const tvPackage = await Package.findById(packageId);
+  if (!tvPackage) {
+    throw new NotFoundError(`Package with ID ${packageId} not found.`);
   }
+
+  const existingSubscription = await Subscription.findExisting(
+    userId,
+    packageId
+  );
+
+  if (existingSubscription) {
+    throw new ConflictError('User is already subscribed to this package.');
+  }
+
+  const startDate = new Date();
+  //TODO: 15 sec expiration i nthe subscription just for testing. it has to be changed to the real expiration time (1month)
+  const endDate = new Date(Date.now() + 15000); // 15 seconds for testing
+
+  const subscription = await Subscription.create({
+    userId,
+    packageId,
+    startDate,
+    endDate,
+    status: 'active',
+  });
+
+  const delay = endDate.getTime() - Date.now();
+  if (delay > 0) {
+    await subscriptionQueue.add(
+      'expire-subscription',
+      { subscriptionId: subscription.id },
+      { delay }
+    );
+    console.log(`--> Scheduled expiration job for subscription #${subscription.id} to run in ${Math.round(delay/1000)}s`);
+  }
+
+  return subscription;
 };
 
 /**
@@ -66,13 +60,7 @@ export const createSubscription = async (
 export const getUserSubscriptions = async (
   userId: number
 ): Promise<Subscription[]> => {
-  try {
-    console.log('Getting subscriptions for userId:', userId);
-    return await Subscription.findAllByUser(userId);
-  } catch (error) {
-    console.error('Error in getUserSubscriptions:', error);
-    throw error;
-  }
+  return Subscription.findAllByUser(userId);
 };
 
 /**
@@ -81,28 +69,23 @@ export const getUserSubscriptions = async (
  * @param userId The ID of the user requesting the cancellation.
  * @returns The updated subscription with 'cancelled' status.
  */
-export const cancelSubscription = async (subscriptionId: number, userId: number): Promise<Subscription> => {
-  try {
-    console.log('Cancelling subscription:', subscriptionId, 'for user:', userId);
-    
-    // 1. Find the subscription and verify ownership in one go
-    const subscription = await Subscription.findByIdAndUser(subscriptionId, userId);
+export const cancelSubscription = async (
+  subscriptionId: number,
+  userId: number
+): Promise<Subscription> => {
+  const subscription = await Subscription.findOne({ where: { id: subscriptionId, userId } });
 
-    // 2. Check if the subscription is already cancelled or expired
-    if (subscription.status !== 'active') {
-        throw new ConflictError(`This subscription is already ${subscription.status}.`);
-    }
-
-    // 3. Update the subscription to 'cancelled'
-    subscription.status = 'cancelled';
-    subscription.cancelledAt = new Date();
-    await subscription.save();
-
-    console.log('Subscription cancelled successfully');
-    return subscription;
-    
-  } catch (error) {
-    console.error('Error in cancelSubscription:', error);
-    throw error;
+  if (!subscription) {
+    throw new NotFoundError(`Subscription with ID ${subscriptionId} not found or does not belong to the user.`);
   }
+
+  if (subscription.status !== 'active') {
+    throw new ConflictError(`This subscription is already ${subscription.status}.`);
+  }
+
+  subscription.status = 'cancelled';
+  subscription.cancelledAt = new Date();
+  await subscription.save();
+
+  return subscription;
 };
