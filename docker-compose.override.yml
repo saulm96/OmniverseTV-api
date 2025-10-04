@@ -26,6 +26,18 @@ services:
       - NODE_ENV=development
     command: ["npx", "nodemon", "--exec", "ts-node", "src/worker.ts"]
 
+  scheduler:
+    build:
+      target: development
+    volumes:
+      - ./src:/usr/src/app/src:cached
+      - ./package.json:/usr/src/app/package.json:cached
+      - ./tsconfig.json:/usr/src/app/tsconfig.json:cached
+      - node_modules_scheduler:/usr/src/app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: ["npx", "nodemon", "--exec", "ts-node", "src/scheduler.ts"]
+
   database:
     ports:
       - "3306:3306"
@@ -37,3 +49,4 @@ services:
 volumes:
   node_modules:
   node_modules_worker:
+  node_modules_scheduler:
