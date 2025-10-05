@@ -5,7 +5,6 @@ import { translationQueue } from '../queues/translationQueue';
 import { redisClient } from '../config/reddis/reddisClient';
 import { getPendingMessage } from '../utils/localization';
 
-// Define la forma de la respuesta de la API para un paquete.
 interface TranslatedPackageResponse {
   id: number;
   name: string;

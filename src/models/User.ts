@@ -1,16 +1,12 @@
-// src/models/User.ts
-
 import {DataTypes, Model, Optional} from "sequelize";
 import {sequelize} from "../config/database/connection";
 import bcrypt from "bcrypt";
-import crypto from 'crypto'; // MODIFIED: Import crypto for token generation
 
-//Define the User model interface
 export interface UserAttributes {
     id: number;
     username: string;
     email: string;
-    password_hash: string | null; // MODIFIED: Can be null for Google users
+    password_hash: string | null; 
     preferred_language: string;
 
     // --- OAUTH FIELDS ---
@@ -20,7 +16,6 @@ export interface UserAttributes {
     verification_token?: string | null; 
 }
 
-// Some attributes are optional in `User.build` and `User.create` calls
 interface UserCreationAttributes extends Optional<UserAttributes, 'id'> {}
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {

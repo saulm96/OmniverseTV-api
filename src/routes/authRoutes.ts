@@ -44,8 +44,9 @@ router.post('/refresh-token', refreshToken);
 
 
 router.get('/verify-email', verifyEmail); 
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
 
+// Google OAuth Routes
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
 router.get('/google/callback', passport.authenticate('google', { failureRedirect: '/login', session: false }), googleCallback);
 
 

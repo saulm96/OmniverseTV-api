@@ -1,10 +1,6 @@
-// src/controllers/subscriptionController.ts
-
 import { Request, Response, NextFunction } from 'express';
 import * as subscriptionService from '../services/subscriptionService';
 
-// CAMBIO 1: Importamos el modelo User pero le damos el alias "UserModel"
-// para evitar cualquier conflicto con otros tipos llamados "User".
 import { User as UserModel } from '../models/User';
 
 /**
@@ -12,12 +8,9 @@ import { User as UserModel } from '../models/User';
  */
 export const createSubscription = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // CAMBIO 2: Hacemos una aserción de tipo explícita usando nuestro alias "UserModel".
-    // Ahora TypeScript sabe sin lugar a dudas que este objeto tiene una propiedad 'id'.
     const user = req.user as UserModel;
     const userId = user.id; 
     
-    // Agregamos una comprobación por si acaso
     if (!userId) {
         return res.status(401).json({ message: 'User not authenticated' });
     }

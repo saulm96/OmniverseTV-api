@@ -9,7 +9,7 @@ import {
 } from "../utils/errors";
 import { sendVerificationEmail } from "./emailService";
 import { generateVerificationToken } from "../utils/generateToken";
-import crypto from 'crypto';
+import crypto from "crypto";
 
 type LocalRegisterData = Pick<
   UserAttributes,
@@ -17,12 +17,14 @@ type LocalRegisterData = Pick<
 >;
 
 export const verifyUserEmail = async (token: string) => {
-  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
-  const user = await User.findOne({ where: { verification_token: hashedToken } });
+  const user = await User.findOne({
+    where: { verification_token: hashedToken },
+  });
 
   if (!user) {
-    throw new BadRequestError('Invalid or expired verification token.');
+    throw new BadRequestError("Invalid or expired verification token.");
   }
 
   user.is_verified = true;
@@ -80,17 +82,22 @@ export const loginUser = async (
   if (!user) {
     throw new NotFoundError("User not found.");
   }
-  
-  if (user.auth_provider === 'local' && !user.is_verified) {
+
+  if (user.auth_provider === "local" && !user.is_verified) {
     try {
-        const { token, hashedToken } = generateVerificationToken();
-        user.verification_token = hashedToken;
-        await user.save();
-        await sendVerificationEmail(user.email, token);
+      const { token, hashedToken } = generateVerificationToken();
+      user.verification_token = hashedToken;
+      await user.save();
+      await sendVerificationEmail(user.email, token);
     } catch (error) {
-        console.error(`Failed to re-send verification email for ${user.email}`, error);
+      console.error(
+        `Failed to re-send verification email for ${user.email}`,
+        error
+      );
     }
-    throw new UnauthorizedError("Your account is not verified. We have sent you a new verification email.");
+    throw new UnauthorizedError(
+      "Your account is not verified. We have sent you a new verification email."
+    );
   }
 
   if (!password) {
@@ -129,4 +136,3 @@ export const refreshUserSession = async (token: string) => {
 
   return { newAccessToken };
 };
-
