@@ -1,28 +1,33 @@
-import "dotenv/config";
-import "./types";
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
+import cookieParser from "cookie-parser";
+import passport from "passport";
 import { sequelize, connectToDatabase } from "./config/database/connection";
 import router from "./routes/router";
-import cookieParser from "cookie-parser";
 import { errorHandler } from "./middlewares/errorMiddleware";
+
+import { configurePassport } from "./config/passport";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   try {
-    //Connect to database attempt
+    configurePassport();
+
     await connectToDatabase();
-    //sincronize database models
     await sequelize.sync({ force: false });
     console.log("✅ Database synchronized successfully.");
 
-    //...Middlewares...
     app.use(express.json());
     app.use(cookieParser());
+    app.use(passport.initialize());
+
     app.use("/api/v1", router);
     app.use(errorHandler);
-    
+
     app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   } catch (error) {
     console.error("❌ Unable to start the server:", error);
@@ -31,4 +36,3 @@ async function startServer() {
 }
 
 startServer();
-

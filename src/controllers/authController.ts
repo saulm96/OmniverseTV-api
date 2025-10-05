@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-
 import * as authService from "../services/authService";
 import { BadRequestError } from "../utils/errors";
+import { generateAuthTokens } from "../utils/jwt";
+import { User } from "../models";
 
 export const register = async (
   req: Request,
@@ -18,12 +19,12 @@ export const register = async (
     const newUser = await authService.registerUser({
       username,
       email,
-      password_hash: password,
+      password_hash: password, 
       preferred_language,
     });
 
     res.status(201).json({
-      message: "User registered succesfully!",
+      message: "User registered succesfully! Please check your email to verify your account.", 
       user: newUser,
     });
   } catch (error) {
@@ -69,9 +70,6 @@ export const login = async (
   }
 };
 
-/**
- * Logs the user out by clearing the session cookies.
- */
 export const logout = (req: Request, res: Response) => {
   // Clear the cookies by setting an expired date
   res.cookie("accessToken", "", {
@@ -89,17 +87,14 @@ export const logout = (req: Request, res: Response) => {
   res.status(200).json({ message: "Logged out successfully" });
 };
 
-/**
- * Refreshes the access token using a valid refresh token.
- */
 export const refreshToken = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { refreshToken } = req.cookies;
-    const { newAccessToken } = await authService.refreshUserSession(refreshToken);
+    const { refreshToken: token } = req.cookies;
+    const { newAccessToken } = await authService.refreshUserSession(token);
 
     res.cookie('accessToken', newAccessToken, {
       httpOnly: true,
@@ -114,7 +109,48 @@ export const refreshToken = async (
 };
 
 
-//CONTROLLER TO TEST THE MIDDLEWARES
+export const verifyEmail = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { token } = req.query;
+
+    if (!token || typeof token !== 'string') {
+      throw new BadRequestError('Verification token is missing or invalid.');
+    }
+
+    await authService.verifyUserEmail(token);
+
+    // En una aplicación real, aquí redirigirías al frontend
+    // res.redirect('http://tu-frontend.com/login?verified=true');
+    res.status(200).json({ message: "Email verified successfully. You can now log in." });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const googleCallback = (req: Request, res: Response) => {
+  const user = req.user as User;
+
+  const { accessToken, refreshToken } = generateAuthTokens(user);
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 15 * 60 * 1000,
+  });
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  
+  res.redirect('http://localhost:3001/dashboard');
+};
+
+
 export const getMe = (req: Request, res: Response) => {
   // The user object is attached to the request by the 'protect' middleware
   res.status(200).json({

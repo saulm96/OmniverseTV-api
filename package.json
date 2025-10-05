@@ -13,7 +13,10 @@
     "docker:clean": "scripts\\clean.bat",
     "docker:logs": "docker-compose logs -f",
     "docker:logs:scheduler": "docker-compose logs -f scheduler",
-    "db:seed": "ts-node src/config/database/seed.ts"
+    "db:seed": "ts-node src/config/database/seed.ts",
+    "docs": "typedoc",
+    "docs:watch": "typedoc --watch",
+    "docs:serve": "npx http-server docs -o"
   },
   "keywords": [
     "api",
@@ -32,6 +35,9 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.9.7",
+    "nodemailer": "^7.0.6",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
     "redis": "^4.6.13",
     "sequelize": "^6.37.3",
     "zod": "^3.23.8"
@@ -42,8 +48,12 @@
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^20.12.12",
+    "@types/nodemailer": "^7.0.2",
+    "@types/passport": "^1.0.17",
+    "@types/passport-google-oauth20": "^2.0.16",
     "nodemon": "^3.1.0",
     "ts-node": "^10.9.2",
+    "typedoc": "^0.28.13",
     "typescript": "^5.4.5"
   }
 }
