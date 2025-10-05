@@ -13,6 +13,9 @@ services:
       - EMAIL_FROM=${EMAIL_FROM}
       - MAILTRAP_USER=${MAILTRAP_USER}
       - MAILTRAP_PASS=${MAILTRAP_PASS}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - API_CALLBACK_URL=${API_CALLBACK_URL}
     depends_on:
       database:
         condition: service_healthy
