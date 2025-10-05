@@ -9,11 +9,15 @@ export interface UserAttributes {
     password_hash: string | null; 
     preferred_language: string;
 
-    // --- OAUTH FIELDS ---
     auth_provider: 'local' | 'google'; 
     provider_id?: string | null; 
     is_verified: boolean; 
-    verification_token?: string | null; 
+    verification_token?: string | null;
+    
+    password_reset_token?: string | null;
+    password_reset_token_expires?: Date | null;
+    profile_image_url?: string | null;
+    role: 'user' | 'admin';
 }
 
 interface UserCreationAttributes extends Optional<UserAttributes, 'id'> {}
@@ -25,10 +29,17 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public email!: string;
   public password_hash!: string | null; 
   public preferred_language!: string;
+
   public auth_provider!: 'local' | 'google'; 
   public provider_id!: string | null; 
   public is_verified!: boolean; 
   public verification_token!: string | null; 
+
+  public password_reset_token!: string | null;
+  public password_reset_token_expires!: Date | null;
+
+  public profile_image_url!: string | null;
+  public role!: 'user' | 'admin';
 
   // Timestamps
   public readonly createdAt!: Date;
@@ -110,6 +121,23 @@ User.init(
         type: DataTypes.STRING,
         allowNull: true,
       },
+      password_reset_token: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      password_reset_token_expires: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      profile_image_url: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      role: {
+        type: DataTypes.ENUM('user', 'admin'),
+        allowNull: false,
+        defaultValue: 'user',
+      },
     },
     {
       sequelize,
@@ -117,6 +145,12 @@ User.init(
       hooks: {
         // This hook only runs if a password is provided
         beforeCreate: async (user) => {
+          if (user.password_hash) {
+            const salt = await bcrypt.genSalt(10);
+            user.password_hash = await bcrypt.hash(user.password_hash, salt);
+          }
+        },
+        beforeUpdate: async (user) => {
           if (user.password_hash) {
             const salt = await bcrypt.genSalt(10);
             user.password_hash = await bcrypt.hash(user.password_hash, salt);

@@ -42,6 +42,7 @@ export const configurePassport = () => {
             is_verified: true,
             password_hash: null, 
             preferred_language: 'en',
+            role: 'user',
           });
 
           return done(null, newUser);

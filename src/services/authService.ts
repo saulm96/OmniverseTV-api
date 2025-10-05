@@ -49,6 +49,7 @@ export const registerUser = async (userData: LocalRegisterData) => {
     preferred_language,
     auth_provider: "local",
     is_verified: false,
+    role: "user",
   });
 
   try {

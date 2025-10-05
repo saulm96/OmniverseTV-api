@@ -1,8 +1,30 @@
 import { sequelize } from './connection';
 import { Package } from '../../models/Package';
+import { User } from '../../models/User'; 
 import Channel from '../../models/Channel';
-import { Subscription } from '../../models/Subscription'; // Asegúrate de importar Subscription
-import '../../models/index'; // Importar el archivo de asociaciones
+import '../../models/index';
+
+//sample data fot USERS
+const usersData = [
+  {
+    username: 'AdminUser',
+    email: 'admin@omniverse.tv',
+    password_hash: 'AdminPassword123!', 
+    preferred_language: 'en',
+    auth_provider: 'local',
+    role: 'admin', 
+    is_verified: true, 
+  },
+  {
+    username: 'RegularUser',
+    email: 'user@omniverse.tv',
+    password_hash: 'UserPassword123!',
+    preferred_language: 'es',
+    auth_provider: 'local',
+    role: 'user', 
+    is_verified: true,
+  },
+] as const;
 
 // Sample data for seeding
 const packagesData = [
@@ -71,31 +93,23 @@ const channelsData = [
 const seedDatabase = async () => {
   try {
     console.log('Starting database seeding...');
-
-    // Verificar que todos los modelos estén cargados
     console.log('Available models:', Object.keys(sequelize.models));
 
-    // Manually drop tables in the correct order to avoid foreign key constraints
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 0;');
-    
-    // Forzar la sincronización - esto recreará todas las tablas basándose en los modelos
     await sequelize.sync({ force: true });
-    
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 1;');
-
     console.log('Database synchronized. Tables dropped and recreated.');
 
-    // Verificar que la tabla subscriptions tenga la columna cancelledAt
-    const [results] = await sequelize.query('DESCRIBE subscriptions;');
-    console.log('Subscriptions table structure:', results);
-
-    // Create Packages
-    const createdPackages = await Package.bulkCreate(packagesData);
+    // --- Create Users, Packages, and Channels ---
+    const [createdUsers, createdPackages, createdChannels] = await Promise.all([
+        User.bulkCreate(usersData),
+        Package.bulkCreate(packagesData),
+        Channel.bulkCreate(channelsData)
+    ]);
+    console.log(`Created ${createdUsers.length} users.`);
     console.log(`Created ${createdPackages.length} packages.`);
-
-    // Create Channels
-    const createdChannels = await Channel.bulkCreate(channelsData);
     console.log(`Created ${createdChannels.length} channels.`);
+
 
     // Associate Channels with Packages
     await Promise.all([
@@ -103,7 +117,6 @@ const seedDatabase = async () => {
       createdPackages[1].addChannels([createdChannels[2], createdChannels[3]]), // Mystery
       createdPackages[2].addChannels([createdChannels[4], createdChannels[5]]), // Sports
     ]);
-
     console.log('Channels associated with packages.');
 
     console.log('✅ Seeding completed successfully!');
