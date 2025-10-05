@@ -1,8 +1,9 @@
 import Router from "express";
-import { register, login, getMe, logout, refreshToken } from "../controllers/authController";
+import { register, login, getMe, logout, refreshToken, verifyEmail, googleCallback } from "../controllers/authController";
 import { protect } from "../middlewares/authMiddleware";
 import { validateRequest } from "../middlewares/validationMiddleware";
 import { registerSchema, loginSchema } from "../schemas/authSchemas";
+import passport from "passport";
 
 /**
  * Authentication router
@@ -40,11 +41,26 @@ router.post('/logout', logout);
  */
 router.post('/refresh-token', refreshToken);
 
+
+
+router.get('/verify-email', verifyEmail); 
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
+
+router.get('/google/callback', passport.authenticate('google', { failureRedirect: '/login', session: false }), googleCallback);
+
+
+
+
+
+
+
 /**
  * GET /auth/me
  * Get authenticated user profile
  * @protected Requires valid access token
  */
 router.get('/me', protect, getMe);
+
+
 
 export default router;

@@ -1,142 +1,132 @@
+// src/models/User.ts
+
 import {DataTypes, Model, Optional} from "sequelize";
 import {sequelize} from "../config/database/connection";
 import bcrypt from "bcrypt";
+import crypto from 'crypto'; // MODIFIED: Import crypto for token generation
 
-/**
- * User model attributes
- * 
- * @example
- * ```typescript
- * const userAttrs: UserAttributes = {
- *   id: 1,
- *   username: 'johndoe',
- *   email: 'john@example.com',
- *   password_hash: '$2b$10$...',
- *   preferred_language: 'es'
- * };
- * ```
- */
+//Define the User model interface
 export interface UserAttributes {
-  id: number;
-  username: string;
-  email: string;
-  password_hash: string;
-  preferred_language: string;
+    id: number;
+    username: string;
+    email: string;
+    password_hash: string | null; // MODIFIED: Can be null for Google users
+    preferred_language: string;
+
+    // --- OAUTH FIELDS ---
+    auth_provider: 'local' | 'google'; 
+    provider_id?: string | null; 
+    is_verified: boolean; 
+    verification_token?: string | null; 
 }
 
-/**
- * Attributes required for user creation (id is auto-generated)
- */
+// Some attributes are optional in `User.build` and `User.create` calls
 interface UserCreationAttributes extends Optional<UserAttributes, 'id'> {}
 
-/**
- * User model with authentication capabilities
- * 
- * @remarks
- * - Passwords are automatically hashed with bcrypt (10 salt rounds)
- * - Email validation is enforced
- * - Username and email must be unique
- * 
- * @example
- * Creating a new user
- * ```typescript
- * const user = await User.create({
- *   username: 'johndoe',
- *   email: 'john@example.com',
- *   password_hash: 'plainPassword123',
- *   preferred_language: 'es'
- * });
- * ```
- * 
- * @example
- * Authenticating a user
- * ```typescript
- * const user = await User.findByEmail('john@example.com');
- * if (user && await user.comparePassword('plainPassword123')) {
- *   console.log('Authentication successful');
- * }
- * ```
- */
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
+  // --- Database Attributes ---
   public id!: number;
   public username!: string;
   public email!: string;
-  public password_hash!: string;
+  public password_hash!: string | null; 
   public preferred_language!: string;
+  public auth_provider!: 'local' | 'google'; 
+  public provider_id!: string | null; 
+  public is_verified!: boolean; 
+  public verification_token!: string | null; 
 
+  // Timestamps
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
+  // --- INSTANCE METHODS ---
+
   /**
-   * Compares a plain text password with the stored hash
-   * 
-   * @param candidatePassword - Plain text password to verify
-   * @returns True if password matches, false otherwise
-   * 
-   * @example
-   * ```typescript
-   * const isValid = await user.comparePassword('myPassword123');
-   * ```
+   * Compares a candidate password with the user's hashed password.
+   * @param candidatePassword The password to compare.
+   * @returns A promise that resolves to true if the passwords match, false otherwise.
    */
   public comparePassword(candidatePassword: string): Promise<boolean> {
+    // A user logged in with Google won't have a password_hash
+    if (!this.password_hash) {
+        return Promise.resolve(false);
+    }
     return bcrypt.compare(candidatePassword, this.password_hash);
   }
 
+  // --- CLASS METHODS ---
+
   /**
-   * Finds a user by email address
-   * 
-   * @param email - Email address to search for
-   * @returns User instance or null if not found
-   * 
-   * @example
-   * ```typescript
-   * const user = await User.findByEmail('john@example.com');
-   * ```
+   * Finds a user by their email address.
+   * @param email The email to search for.
+   * @returns A promise that resolves to the User instance or null if not found.
    */
   public static findByEmail(email: string): Promise<User | null> {
     return User.findOne({ where: { email } });
   }
 }
 
+//Initialize the model
 User.init(
-  {
-    id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    username: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-    },
-    email: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-      validate: {
-        isEmail: true,
+    {
+      id: {
+        type: DataTypes.INTEGER.UNSIGNED,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      username: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+      },
+      email: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+        validate: {
+          isEmail: true,
+        },
+      },
+      password_hash: {
+        type: DataTypes.STRING,
+        allowNull: true, 
+      },
+      preferred_language: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      // --- OAUTH FIELDS ---
+      auth_provider: {
+        type: DataTypes.ENUM('local', 'google'),
+        allowNull: false,
+        defaultValue: 'local',
+      },
+      provider_id: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        unique: true,
+      },
+      is_verified: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      verification_token: {
+        type: DataTypes.STRING,
+        allowNull: true,
       },
     },
-    password_hash: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    preferred_language: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-  },
-  {
-    sequelize,
-    modelName: 'User',
-    hooks: {
-      beforeCreate: async (user) => {
-        if (user.password_hash) {
-          const salt = await bcrypt.genSalt(10);
-          user.password_hash = await bcrypt.hash(user.password_hash, salt);
-        }
+    {
+      sequelize,
+      modelName: 'User',
+      hooks: {
+        // This hook only runs if a password is provided
+        beforeCreate: async (user) => {
+          if (user.password_hash) {
+            const salt = await bcrypt.genSalt(10);
+            user.password_hash = await bcrypt.hash(user.password_hash, salt);
+          }
+        },
       },
-    },
-  }
+    }
 );
