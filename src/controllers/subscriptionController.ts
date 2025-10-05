@@ -1,14 +1,21 @@
 import { Request, Response, NextFunction } from 'express';
 import * as subscriptionService from '../services/subscriptionService';
 
+import { User as UserModel } from '../models/User';
+
 /**
  * Handles the request to create a new subscription.
  */
 export const createSubscription = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user!.id; // Get user ID from the protect middleware
-    const { packageId } = req.body;
+    const user = req.user as UserModel;
+    const userId = user.id; 
+    
+    if (!userId) {
+        return res.status(401).json({ message: 'User not authenticated' });
+    }
 
+    const { packageId } = req.body;
     const subscription = await subscriptionService.createSubscription(userId, packageId);
     res.status(201).json(subscription);
   } catch (error) {
@@ -21,7 +28,13 @@ export const createSubscription = async (req: Request, res: Response, next: Next
  */
 export const getUserSubscriptions = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user!.id; // Get user ID from the protect middleware
+    const user = req.user as UserModel;
+    const userId = user.id;
+
+    if (!userId) {
+        return res.status(401).json({ message: 'User not authenticated' });
+    }
+
     const subscriptions = await subscriptionService.getUserSubscriptions(userId);
     res.status(200).json(subscriptions);
   } catch (error) {
@@ -39,11 +52,16 @@ export const cancelSubscription = async (
 ) => {
   try {
     const subscriptionId = parseInt(req.params.id, 10);
-    const userId = req.user!.id;
+    const user = req.user as UserModel;
+    const userId = user.id;
+
+    if (!userId) {
+        return res.status(401).json({ message: 'User not authenticated' });
+    }
+    
     const updatedSubscription = await subscriptionService.cancelSubscription(subscriptionId, userId);
     res.status(200).json(updatedSubscription);
   } catch (error) {
     next(error);
   }
 };
-
