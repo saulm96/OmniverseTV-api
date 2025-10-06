@@ -13,6 +13,6 @@ router.use('/auth', authRoutes);
 router.use('/packages', packageRoutes);
 router.use('/subscriptions', subscriptionRoutes);
 router.use('/channels', channelRoutes);
-router.use('/users', protect, userRoutes);
+router.use('/users', protect,   userRoutes);
 
 export default router;
