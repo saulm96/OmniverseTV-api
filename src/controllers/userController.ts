@@ -65,3 +65,18 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
       next(error);
   }
 };
+
+export const setPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+      const user = req.user as UserModel;
+      const userId = user.id;
+      const { password } = req.body;
+
+      await authService.setPassword(userId, password);
+
+      res.status(200).json({ message: 'Password set successfully!' });
+  } catch (error) {
+      next(error);
+  }
+};
+

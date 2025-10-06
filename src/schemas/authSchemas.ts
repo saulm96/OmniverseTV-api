@@ -5,12 +5,13 @@ export const registerSchema = z.object({
   body: z.object({
     username: z
       .string()
-      .min(3)
-      .max(25, "Username must be between 3 and 25 characters long"),
+      .min(3, "Username must be at least 3 characters long")
+      .max(25, "Username must be at most 25 characters long"),
     email: z.string().email("Must be a valid email address"),
     password: z
       .string()
       .min(8, "Password must be at least 8 characters long")
+      .max(20, "Password must be at most 20 characters long")
       .regex(
         //TODO: check if the regex works as expected
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
@@ -38,10 +39,12 @@ export const updateProfileSchema = z.object({
     firstName: z
       .string()
       .min(2, 'First name must be at least 2 characters long')
+      .regex(/^[a-zA-Z]+$/, 'First name can only contain letters')
       .optional(),
     lastName: z
       .string()
       .min(2, 'Last name must be at least 2 characters long')
+      .regex(/^[a-zA-Z]+$/, 'Last name can only contain letters')
       .optional(),
     preferred_language: z
       .string()
@@ -61,8 +64,8 @@ export const resetPasswordSchema = z.object({
     token: z.string().nonempty("Token is required"),
     password: z
       .string()
-      .min(8)
-      .max(20, "Password must be between 8 and 20 characters long")
+      .min(8, "Password must be at least 8 characters long")
+      .max(20, "Password must be at most 20 characters long")
       .regex(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
       ),
@@ -76,8 +79,20 @@ export const changePasswordSchema = z.object({
       .nonempty('Current password is required'),
     newPassword: z
     .string()
-    .min(8)
-    .max(20, "Password must be between 8 and 20 characters long")
+    .min(8, "Password must be at least 8 characters long")
+    .max(20, "Password must be at most 20 characters long")
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+    ),
+  }),
+});
+
+export const setPasswordSchema = z.object({
+  body: z.object({
+    password: z
+    .string()
+    .min(8, "Password must be at least 8 characters long")
+    .max(20, "Password must be at most 20 characters long")
     .regex(
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
     ),

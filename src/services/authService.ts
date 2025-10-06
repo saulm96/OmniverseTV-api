@@ -235,3 +235,18 @@ export const changePassword = async (
   user.password_hash = newPassword;
   await user.save();
 };
+
+export const setPassword = async (userId: number, newPassword: string) => {
+  const user = await User.findByPk(userId);
+
+  if (!user) {
+      throw new NotFoundError('User not found.');
+  }
+
+  if (user.auth_provider !== 'google' || user.password_hash !== null) {
+      throw new BadRequestError('This account already has a password or is not a Google account.');
+  }
+
+  user.password_hash = newPassword;
+  await user.save();
+};
