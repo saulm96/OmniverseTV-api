@@ -5,6 +5,8 @@ import bcrypt from "bcrypt";
 export interface UserAttributes {
     id: number;
     username: string;
+    firstName: string | null;
+    lastName: string | null;
     email: string;
     password_hash: string | null; 
     preferred_language: string;
@@ -26,6 +28,8 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   // --- Database Attributes ---
   public id!: number;
   public username!: string;
+  public firstName!: string | null;
+  public lastName!: string | null;
   public email!: string;
   public password_hash!: string | null; 
   public preferred_language!: string;
@@ -84,6 +88,14 @@ User.init(
         type: DataTypes.STRING,
         allowNull: false,
         unique: true,
+      },
+      firstName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      lastName: {
+        type: DataTypes.STRING,
+        allowNull: true,
       },
       email: {
         type: DataTypes.STRING,
@@ -151,11 +163,14 @@ User.init(
           }
         },
         beforeUpdate: async (user) => {
-          if (user.password_hash) {
-            const salt = await bcrypt.genSalt(10);
-            user.password_hash = await bcrypt.hash(user.password_hash, salt);
+          if (user.changed('password_hash') && user.password_hash) {
+            const isAlreadyHashed = user.password_hash.startsWith('$2a$') || user.password_hash.startsWith('$2b$');
+            if (!isAlreadyHashed) {
+                const salt = await bcrypt.genSalt(10);
+                user.password_hash = await bcrypt.hash(user.password_hash, salt);
+            }
           }
-        },
+        }
       },
     }
 );

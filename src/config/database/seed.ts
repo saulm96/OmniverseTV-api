@@ -7,25 +7,28 @@ import "../../models/index";
 //sample data fot USERS
 const usersData = [
   {
-    username: "AdminUser",
-    email: "admin@omniverse.tv",
-    password_hash: "AdminPassword123!",
-    preferred_language: "en",
-    auth_provider: "local",
-    role: "admin",
+    username: 'AdminUser',
+    firstName: 'Admin', 
+    lastName: 'Omniverse', 
+    email: 'admin@omniverse.tv',
+    password_hash: 'AdminPassword123!',
+    preferred_language: 'en',
+    auth_provider: 'local',
+    role: 'admin',
     is_verified: true,
   },
   {
-    username: "RegularUser",
-    email: "user@omniverse.tv",
-    password_hash: "UserPassword123!",
-    preferred_language: "es",
-    auth_provider: "local",
-    role: "user",
+    username: 'RegularUser',
+    firstName: 'Rick', 
+    lastName: 'Sanchez', 
+    email: 'user@omniverse.tv',
+    password_hash: 'UserPassword123!',
+    preferred_language: 'es',
+    auth_provider: 'local',
+    role: 'user',
     is_verified: true,
   },
 ] as const;
-
 // Sample data for seeding
 const packagesData = [
   {

@@ -17,6 +17,9 @@ type LocalRegisterData = Pick<
   "username" | "email" | "password_hash" | "preferred_language"
 >;
 
+/**
+ * Verifies a user's email.
+ */
 export const verifyUserEmail = async (token: string) => {
   const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
@@ -35,6 +38,9 @@ export const verifyUserEmail = async (token: string) => {
   return;
 };
 
+/**
+ * Registers a new user.
+ */
 export const registerUser = async (userData: LocalRegisterData) => {
   const { username, email, password_hash, preferred_language } = userData;
 
@@ -75,6 +81,9 @@ export const registerUser = async (userData: LocalRegisterData) => {
   };
 };
 
+/**
+ * Logs in a user.
+ */
 export const loginUser = async (
   credentials: Pick<UserAttributes, "email" | "password_hash">
 ) => {
@@ -116,6 +125,9 @@ export const loginUser = async (
   return tokens;
 };
 
+/**
+ * Refreshes a user's session.
+ */
 export const refreshUserSession = async (token: string) => {
   if (!token) {
     throw new UnauthorizedError("No refresh token provided.");
@@ -139,13 +151,18 @@ export const refreshUserSession = async (token: string) => {
   return { newAccessToken };
 };
 
+/**
+ * Sends a password reset email to the user.
+ */
 export const forgotPassword = async (email: string) => {
   const user = await User.findByEmail(email);
 
   // Silently succeed even if user doesn't exist to prevent email enumeration attacks
-  if (!user || user.auth_provider !== 'local') {
-      console.log(`Password reset requested for non-local or non-existent user: ${email}`);
-      return;
+  if (!user || user.auth_provider !== "local") {
+    console.log(
+      `Password reset requested for non-local or non-existent user: ${email}`
+    );
+    return;
   }
 
   const { token, hashedToken } = generateVerificationToken();
@@ -162,20 +179,24 @@ export const forgotPassword = async (email: string) => {
  * Resets a user's password using a valid token.
  */
 export const resetPassword = async (token: string, newPassword: string) => {
-  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
   const user = await User.findOne({
-      where: {
-          password_reset_token: hashedToken,
-          // Check if the token has expired
-          password_reset_token_expires: {
-              [Op.gt]: new Date(),
-          },
+    where: {
+      password_reset_token: hashedToken,
+      // Check if the token has expired
+      password_reset_token_expires: {
+        [Op.gt]: new Date(),
       },
+    },
   });
 
-  if (!user || !user.password_reset_token_expires || user.password_reset_token_expires < new Date()) {
-      throw new BadRequestError('Token is invalid or has expired.');
+  if (
+    !user ||
+    !user.password_reset_token_expires ||
+    user.password_reset_token_expires < new Date()
+  ) {
+    throw new BadRequestError("Token is invalid or has expired.");
   }
 
   // The 'beforeUpdate' hook in the User model will automatically hash the new password
@@ -183,5 +204,34 @@ export const resetPassword = async (token: string, newPassword: string) => {
   user.password_reset_token = null;
   user.password_reset_token_expires = null;
 
+  await user.save();
+};
+
+/**
+ * Changes a user's password.
+ */
+export const changePassword = async (
+  userId: number,
+  currentPassword: string,
+  newPassword: string
+) => {
+  const user = await User.findByPk(userId);
+
+  if (!user) {
+    throw new NotFoundError("User not found.");
+  }
+
+  if (user.auth_provider !== "local" || !user.password_hash) {
+    throw new BadRequestError(
+      "Password cannot be changed for this account type."
+    );
+  }
+
+  const isMatch = await user.comparePassword(currentPassword);
+  if (!isMatch) {
+    throw new UnauthorizedError("Incorrect current password.");
+  }
+
+  user.password_hash = newPassword;
   await user.save();
 };

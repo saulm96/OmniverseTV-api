@@ -1,29 +1,20 @@
 import { Request, Response, NextFunction } from "express";
 import * as userService from "../services/userService";
+import * as authService from "../services/authService";
 import { User as UserModel } from "../models";
 import { BadRequestError } from "../utils/errors";
 
-/**
- * Handles the request to update the current user's username.
- */
-export const updateUsername = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const updateProfile = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = req.user as UserModel;
     const userId = user.id;
-
     if (!userId) {
       return res.status(401).json({ message: "User not authenticated" });
     }
 
-    const { username: newUsername } = req.body;
-    const updatedUser = await userService.updateUsername(userId, newUsername);
-
+    const updatedUser = await userService.updateProfile(userId, req.body);
     res.status(200).json({
-      message: "Username updated successfully!",
+      message: "Profile updated successfully!",
       user: updatedUser,
     });
   } catch (error) {
@@ -58,5 +49,19 @@ export const uploadProfileImage = async (
     });
   } catch (error) {
     next(error);
+  }
+};
+
+export const changePassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+      const user = req.user as UserModel;
+      const userId = user.id;
+      const { currentPassword, newPassword } = req.body;
+
+      await authService.changePassword(userId, currentPassword, newPassword);
+
+      res.status(200).json({ message: 'Password changed successfully!' });
+  } catch (error) {
+      next(error);
   }
 };
