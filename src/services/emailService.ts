@@ -44,3 +44,17 @@ export const sendVerificationEmail = async (userEmail: string, token: string) =>
 
     await sendEmail({ to: userEmail, subject, html });
 }
+
+export const sendPasswordResetEmail = async (userEmail: string, token: string) => {
+  const resetLink = `http://localhost:3001/reset-password?token=${token}`;
+  const subject = 'Your Password Reset Request for OmniverseTV';
+  const html = `
+      <h1>Password Reset Request</h1>
+      <p>You requested a password reset. Please click the link below to set a new password:</p>
+      <a href="${resetLink}">Reset My Password</a>
+      <p>This link will expire in 10 minutes.</p>
+      <p>If you did not request a password reset, please ignore this email.</p>
+  `;
+
+  await sendEmail({ to: userEmail, subject, html });
+}

@@ -7,9 +7,10 @@ import {
   UnauthorizedError,
   BadRequestError,
 } from "../utils/errors";
-import { sendVerificationEmail } from "./emailService";
 import { generateVerificationToken } from "../utils/generateToken";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./emailService";
 import crypto from "crypto";
+import { Op } from "sequelize";
 
 type LocalRegisterData = Pick<
   UserAttributes,
@@ -136,4 +137,51 @@ export const refreshUserSession = async (token: string) => {
   const { accessToken: newAccessToken } = generateAuthTokens(user);
 
   return { newAccessToken };
+};
+
+export const forgotPassword = async (email: string) => {
+  const user = await User.findByEmail(email);
+
+  // Silently succeed even if user doesn't exist to prevent email enumeration attacks
+  if (!user || user.auth_provider !== 'local') {
+      console.log(`Password reset requested for non-local or non-existent user: ${email}`);
+      return;
+  }
+
+  const { token, hashedToken } = generateVerificationToken();
+
+  user.password_reset_token = hashedToken;
+  // Set token to expire in 10 minutes
+  user.password_reset_token_expires = new Date(Date.now() + 10 * 60 * 1000);
+
+  await user.save();
+  await sendPasswordResetEmail(user.email, token);
+};
+
+/**
+ * Resets a user's password using a valid token.
+ */
+export const resetPassword = async (token: string, newPassword: string) => {
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  const user = await User.findOne({
+      where: {
+          password_reset_token: hashedToken,
+          // Check if the token has expired
+          password_reset_token_expires: {
+              [Op.gt]: new Date(),
+          },
+      },
+  });
+
+  if (!user || !user.password_reset_token_expires || user.password_reset_token_expires < new Date()) {
+      throw new BadRequestError('Token is invalid or has expired.');
+  }
+
+  // The 'beforeUpdate' hook in the User model will automatically hash the new password
+  user.password_hash = newPassword;
+  user.password_reset_token = null;
+  user.password_reset_token_expires = null;
+
+  await user.save();
 };
