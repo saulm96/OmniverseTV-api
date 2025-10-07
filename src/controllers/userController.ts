@@ -4,7 +4,11 @@ import * as authService from "../services/authService";
 import { User as UserModel } from "../models";
 import { BadRequestError } from "../utils/errors";
 
-export const updateProfile = async (req: Request, res: Response, next: NextFunction) => {
+export const updateProfile = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const user = req.user as UserModel;
     const userId = user.id;
@@ -52,44 +56,84 @@ export const uploadProfileImage = async (
   }
 };
 
-export const changePassword = async (req: Request, res: Response, next: NextFunction) => {
+export const changePassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-      const user = req.user as UserModel;
-      const userId = user.id;
-      const { currentPassword, newPassword } = req.body;
+    const user = req.user as UserModel;
+    const userId = user.id;
+    const { currentPassword, newPassword } = req.body;
 
-      await authService.changePassword(userId, currentPassword, newPassword);
+    await authService.changePassword(userId, currentPassword, newPassword);
 
-      res.status(200).json({ message: 'Password changed successfully!' });
+    res.status(200).json({ message: "Password changed successfully!" });
   } catch (error) {
-      next(error);
+    next(error);
   }
 };
 
-export const setPasswordForGoogleAccount = async (req: Request, res: Response, next: NextFunction) => {
+export const setPasswordForGoogleAccount = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-      const user = req.user as UserModel;
-      const userId = user.id;
-      const { password } = req.body;
+    const user = req.user as UserModel;
+    const userId = user.id;
+    const { password } = req.body;
 
-      await authService.setPasswordForGoogleAccount(userId, password);
+    await authService.setPasswordForGoogleAccount(userId, password);
 
-      res.status(200).json({ message: 'Password set successfully!' });
+    res.status(200).json({ message: "Password set successfully!" });
   } catch (error) {
-      next(error);
+    next(error);
   }
 };
 
-export const requestEmailChange = async (req: Request, res: Response, next: NextFunction) => {
+export const requestEmailChange = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-      const user = req.user as UserModel;
-      const userId = user.id;
-      const { newEmail, password } = req.body;
+    const user = req.user as UserModel;
+    const userId = user.id;
+    const { newEmail, password } = req.body;
 
-      await authService.requestEmailChange(userId, newEmail, password);
+    await authService.requestEmailChange(userId, newEmail, password);
 
-      res.status(200).json({ message: 'Email change request processed successfully!' });
+    res
+      .status(200)
+      .json({ message: "Email change request processed successfully!" });
   } catch (error) {
-      next(error);
+    next(error);
+  }
+};
+
+export const deleteAccount = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user = req.user as UserModel;
+    const userId = user.id;
+    const { password } = req.body;
+
+    await userService.deleteAccount(userId, password);
+    //Logout the user by clearing the session cookies
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge:0
+    };
+    res.clearCookie("accessToken", cookieOptions);
+    res.clearCookie("refreshToken", cookieOptions);
+
+    res.status(200).json({ message: "Account deleted successfully!" });
+  } catch (error) {
+    next(error);
   }
 };
