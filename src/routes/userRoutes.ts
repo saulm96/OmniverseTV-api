@@ -1,7 +1,7 @@
 import {Router} from "express";
 import {validateRequest} from "../middlewares/validationMiddleware";
-import {updateProfileSchema, changePasswordSchema, setPasswordSchema, requestEmailChangeSchema} from "../schemas/authSchemas";
-import {updateProfile, changePassword, uploadProfileImage, setPasswordForGoogleAccount, requestEmailChange} from "../controllers/userController";
+import {updateProfileSchema, changePasswordSchema, setPasswordSchema, requestEmailChangeSchema, deleteAccountSchema} from "../schemas/authSchemas";
+import {updateProfile, changePassword, uploadProfileImage, setPasswordForGoogleAccount, requestEmailChange, deleteAccount} from "../controllers/userController";
 import {upload} from "../middlewares/uploadMiddleware"
 const router = Router();
 
@@ -14,4 +14,5 @@ router.post('/me/change-password', validateRequest(changePasswordSchema), change
 router.post('/me/set-password', validateRequest(setPasswordSchema), setPasswordForGoogleAccount);
 
 router.post('/me/request-email-change', validateRequest(requestEmailChangeSchema), requestEmailChange);
+router.delete('/me', validateRequest(deleteAccountSchema), deleteAccount);
 export default router;

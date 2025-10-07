@@ -72,17 +72,14 @@ export const login = async (
 
 export const logout = (req: Request, res: Response) => {
   // Clear the cookies by setting an expired date
-  res.cookie("accessToken", "", {
+  const cookiesOptions = {
     httpOnly: true,
-    expires: new Date(0),
     secure: process.env.NODE_ENV === "production",
-  });
-
-  res.cookie("refreshToken", "", {
-    httpOnly: true,
-    expires: new Date(0),
-    secure: process.env.NODE_ENV === "production",
-  });
+    maxAge:0
+  };
+  
+  res.clearCookie("accessToken", cookiesOptions);
+  res.clearCookie("refreshToken", cookiesOptions);
 
   res.status(200).json({ message: "Logged out successfully" });
 };

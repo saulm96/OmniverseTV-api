@@ -1,6 +1,6 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { User } from '../models';
-import { ConflictError, NotFoundError } from '../utils/errors';
+import { BadRequestError, ConflictError, NotFoundError, UnauthorizedError } from '../utils/errors';
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -95,4 +95,18 @@ export const uploadProfileImage = async (
     role: user.role,
     profile_image_url: user.profile_image_url,
   };
+};
+
+export const deleteAccount = async (userId: number, password: string) => {
+  const user = await User.findByPk(userId);
+  if (!user) throw new NotFoundError("User not found");
+
+if (user.auth_provider !== 'local' || !user.password_hash) {
+    throw new BadRequestError('This action is not available for this account.');
+}
+
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) throw new UnauthorizedError("Incorrect password");
+
+  await user.destroy();
 };

@@ -111,3 +111,10 @@ export const confirmEmailChangeSchema = z.object({
     token: z.string().nonempty('Token is required'),
   }),
 });
+
+export const deleteAccountSchema = z.object({
+  body: z.object({
+    password: z.string().nonempty('Password is required'),
+  }),
+});
+

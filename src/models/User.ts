@@ -176,6 +176,7 @@ User.init(
     {
       sequelize,
       modelName: 'User',
+      paranoid: true,
       hooks: {
         // This hook only runs if a password is provided
         beforeCreate: async (user) => {
