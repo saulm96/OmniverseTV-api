@@ -8,7 +8,7 @@ import {
   BadRequestError,
 } from "../utils/errors";
 import { generateVerificationToken } from "../utils/generateToken";
-import { sendVerificationEmail, sendPasswordResetEmail } from "./emailService";
+import { sendVerificationEmail, sendPasswordResetEmail, sendEmailChangeConfirmation } from "./emailService";
 import crypto from "crypto";
 import { Op } from "sequelize";
 
@@ -233,5 +233,86 @@ export const changePassword = async (
   }
 
   user.password_hash = newPassword;
+  await user.save();
+};
+
+/**
+ * Sets a password for a user that is not a local account and does not have a password.
+ * This is used for Google accounts. If they set a password, they can only login with a local account.
+ */
+export const setPasswordForGoogleAccount = async (userId: number, newPassword: string) => {
+  const user = await User.findByPk(userId);
+
+  if (!user) {
+      throw new NotFoundError('User not found.');
+  }
+
+  if (user.auth_provider !== 'google' || user.password_hash !== null) {
+      throw new BadRequestError('This action is not allowed for this account type.');
+  }
+
+  user.password_hash = newPassword;
+  user.auth_provider = 'local';
+  user.provider_id = null;
+  await user.save();
+};
+
+
+/**
+ * Initiates an email change process for a local user.
+ */
+export const requestEmailChange = async (userId: number, newEmail: string, password: string) => {
+  const user = await User.findByPk(userId);
+  if (!user || user.auth_provider !== 'local' || !user.password_hash) {
+      throw new BadRequestError('This action is not available for this account.');
+  }
+
+  // Verify user's current password for security
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) {
+      throw new UnauthorizedError('Incorrect password.');
+  }
+
+  // Check if the new email is already in use
+  const existingUser = await User.findByEmail(newEmail);
+  if (existingUser) {
+      throw new ConflictError('New email address is already in use.');
+  }
+
+  const { token, hashedToken } = generateVerificationToken();
+    
+  user.unconfirmed_email = newEmail;
+  user.email_change_token = hashedToken;
+  user.email_change_token_expires = new Date(Date.now() + 15 * 60 * 1000); 
+  await user.save();
+  await sendEmailChangeConfirmation(newEmail, token);
+};
+
+
+/**
+* Confirms and finalizes an email change.
+*/
+export const confirmEmailChange = async (token: string) => {
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  const user = await User.findOne({
+      where: {
+          email_change_token: hashedToken,
+          email_change_token_expires: {
+              [Op.gt]: new Date(), 
+          },
+      },
+  });
+
+  if (!user || !user.unconfirmed_email) {
+      throw new BadRequestError('Invalid or expired token.');
+  }
+
+  user.email = user.unconfirmed_email;
+  user.unconfirmed_email = null;
+  user.email_change_token = null;
+  user.email_change_token_expires = null; 
+  user.is_verified = true; 
+
   await user.save();
 };

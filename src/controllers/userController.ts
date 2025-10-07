@@ -65,3 +65,31 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
       next(error);
   }
 };
+
+export const setPasswordForGoogleAccount = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+      const user = req.user as UserModel;
+      const userId = user.id;
+      const { password } = req.body;
+
+      await authService.setPasswordForGoogleAccount(userId, password);
+
+      res.status(200).json({ message: 'Password set successfully!' });
+  } catch (error) {
+      next(error);
+  }
+};
+
+export const requestEmailChange = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+      const user = req.user as UserModel;
+      const userId = user.id;
+      const { newEmail, password } = req.body;
+
+      await authService.requestEmailChange(userId, newEmail, password);
+
+      res.status(200).json({ message: 'Email change request processed successfully!' });
+  } catch (error) {
+      next(error);
+  }
+};
