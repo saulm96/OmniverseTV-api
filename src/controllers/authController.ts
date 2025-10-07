@@ -160,3 +160,34 @@ export const getMe = (req: Request, res: Response) => {
     },
   });
 };
+
+export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+      await authService.forgotPassword(req.body.email);
+      res.status(200).json({ message: 'A password reset link has been sent.' });
+  } catch (error) {
+      next(error);
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+      const { token, password } = req.body;
+      await authService.resetPassword(token, password);
+      res.status(200).json({ message: 'Password has been reset successfully.' });
+  } catch (error) {
+      next(error);
+  }
+};
+
+export const confirmEmailChange = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+      const { token } = req.body;
+
+      await authService.confirmEmailChange(token);
+
+      res.status(200).json({ message: 'Email changed successfully!' });
+  } catch (error) {
+      next(error);
+  }
+};

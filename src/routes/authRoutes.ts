@@ -1,8 +1,8 @@
 import Router from "express";
-import { register, login, getMe, logout, refreshToken, verifyEmail, googleCallback } from "../controllers/authController";
+import { register, login, getMe, logout, refreshToken, verifyEmail, googleCallback, forgotPassword, resetPassword, confirmEmailChange } from "../controllers/authController";
 import { protect } from "../middlewares/authMiddleware";
 import { validateRequest } from "../middlewares/validationMiddleware";
-import { registerSchema, loginSchema } from "../schemas/authSchemas";
+import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, confirmEmailChangeSchema } from "../schemas/authSchemas";
 import passport from "passport";
 
 /**
@@ -41,13 +41,22 @@ router.post('/logout', logout);
  */
 router.post('/refresh-token', refreshToken);
 
-
-
+/**
+ * GET /auth/verify-email
+ * Verify user email
+ */
 router.get('/verify-email', verifyEmail); 
 
 // Google OAuth Routes
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
 router.get('/google/callback', passport.authenticate('google', { failureRedirect: '/login', session: false }), googleCallback);
+
+// Password Reset Routes
+router.post('/forgot-password', validateRequest(forgotPasswordSchema), forgotPassword);
+router.post('/reset-password', validateRequest(resetPasswordSchema), resetPassword);
+
+// Email Change Routes
+router.post('/confirm-email-change', validateRequest(confirmEmailChangeSchema), confirmEmailChange);
 
 
 
