@@ -1,8 +1,8 @@
 import Router from "express";
-import { register, login, getMe, logout, refreshToken, verifyEmail, googleCallback, forgotPassword, resetPassword, confirmEmailChange } from "../controllers/authController";
+import { register, login, getMe, logout, refreshToken, verifyEmail, googleCallback, forgotPassword, resetPassword, confirmEmailChange, verifyTwoFactorAuth } from "../controllers/authController";
 import { protect } from "../middlewares/authMiddleware";
 import { validateRequest } from "../middlewares/validationMiddleware";
-import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, confirmEmailChangeSchema } from "../schemas/authSchemas";
+import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, confirmEmailChangeSchema, verifyTwoFactorSchema } from "../schemas/authSchemas";
 import passport from "passport";
 
 /**
@@ -28,6 +28,7 @@ router.post('/register', validateRequest(registerSchema), register);
  * Authenticate user and receive access token
  */
 router.post('/login', validateRequest(loginSchema), login);
+router.post('/2fa/verify', validateRequest(verifyTwoFactorSchema), verifyTwoFactorAuth);
 
 /**
  * POST /auth/logout

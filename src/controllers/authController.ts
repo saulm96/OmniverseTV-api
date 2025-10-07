@@ -39,32 +39,64 @@ export const login = async (
 ) => {
   try {
     const { email, password } = req.body;
-
     if (!email || !password) {
       throw new BadRequestError("Email and password are required.");
     }
 
-    const { accessToken, refreshToken } = await authService.loginUser({
+    const result = await authService.loginUser({
       email,
       password_hash: password,
     });
 
-    // Set cookies
+    if (result.status === '2fa_required') {
+      return res.status(200).json({
+        message: '2FA token required.',
+        userId: result.userId,
+      });
+    } else {
+      const { accessToken, refreshToken } = result;
+
+      res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 15 * 60 * 1000,
+      });
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      res.status(200).json({ message: "Login successful!" });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyTwoFactorAuth = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const {userId, token} = req.body;
+    const {accessToken, refreshToken} = await authService.verifyTwoFactorAuth(userId, token);
+    
     res.cookie("accessToken", accessToken, {
-      httpOnly: true, // The cookie is not accessible via JavaScript
-      secure: process.env.NODE_ENV === "production", // Only send over HTTPS in production
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.status(200).json({
-      message: "Login successful!",
-    });
+    res.status(200).json({ message: "Login succesful!" });
   } catch (error) {
     next(error);
   }

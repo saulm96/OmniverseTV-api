@@ -1,48 +1,55 @@
-import {DataTypes, Model, Optional} from "sequelize";
-import {sequelize} from "../config/database/connection";
+import { DataTypes, Model, Optional } from "sequelize";
+import { sequelize } from "../config/database/connection";
 import bcrypt from "bcrypt";
 
 export interface UserAttributes {
-    id: number;
-    username: string;
-    firstName: string | null;
-    lastName: string | null;
-    email: string;
-    password_hash: string | null; 
-    preferred_language: string;
+  id: number;
+  username: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  password_hash: string | null;
+  preferred_language: string;
 
-    auth_provider: 'local' | 'google'; 
-    provider_id?: string | null; 
-    is_verified: boolean; 
-    verification_token?: string | null;
-    
-    password_reset_token?: string | null;
-    password_reset_token_expires?: Date | null;
-    profile_image_url?: string | null;
+  auth_provider: "local" | "google";
+  provider_id?: string | null;
+  is_verified: boolean;
+  verification_token?: string | null;
 
-    unconfirmed_email?: string | null;
-    email_change_token?: string | null;
-    email_change_token_expires?: Date | null;
+  password_reset_token?: string | null;
+  password_reset_token_expires?: Date | null;
+  profile_image_url?: string | null;
 
-    role: 'user' | 'admin';
+  unconfirmed_email?: string | null;
+  email_change_token?: string | null;
+  email_change_token_expires?: Date | null;
+
+  is_two_factor_enabled?: boolean;
+  two_factor_secret?: string | null;
+  two_factor_temp_secret?: string | null;
+
+  role: "user" | "admin";
 }
 
-interface UserCreationAttributes extends Optional<UserAttributes, 'id'> {}
+interface UserCreationAttributes extends Optional<UserAttributes, "id"> {}
 
-export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
+export class User
+  extends Model<UserAttributes, UserCreationAttributes>
+  implements UserAttributes
+{
   // --- Database Attributes ---
   public id!: number;
   public username!: string;
   public firstName!: string | null;
   public lastName!: string | null;
   public email!: string;
-  public password_hash!: string | null; 
+  public password_hash!: string | null;
   public preferred_language!: string;
 
-  public auth_provider!: 'local' | 'google'; 
-  public provider_id!: string | null; 
-  public is_verified!: boolean; 
-  public verification_token!: string | null; 
+  public auth_provider!: "local" | "google";
+  public provider_id!: string | null;
+  public is_verified!: boolean;
+  public verification_token!: string | null;
 
   public password_reset_token!: string | null;
   public password_reset_token_expires!: Date | null;
@@ -53,7 +60,11 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public email_change_token!: string | null;
   public email_change_token_expires!: Date | null;
 
-  public role!: 'user' | 'admin';
+  public is_two_factor_enabled!: boolean;
+  public two_factor_secret!: string | null;
+  public two_factor_temp_secret!: string | null;
+
+  public role!: "user" | "admin";
 
   // Timestamps
   public readonly createdAt!: Date;
@@ -69,7 +80,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public comparePassword(candidatePassword: string): Promise<boolean> {
     // A user logged in with Google won't have a password_hash
     if (!this.password_hash) {
-        return Promise.resolve(false);
+      return Promise.resolve(false);
     }
     return bcrypt.compare(candidatePassword, this.password_hash);
   }
@@ -88,112 +99,127 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
 
 //Initialize the model
 User.init(
-    {
-      id: {
-        type: DataTypes.INTEGER.UNSIGNED,
-        autoIncrement: true,
-        primaryKey: true,
-      },
-      username: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true,
-      },
-      firstName: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      lastName: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      email: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true,
-        validate: {
-          isEmail: true,
-        },
-      },
-      password_hash: {
-        type: DataTypes.STRING,
-        allowNull: true, 
-      },
-      preferred_language: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      // --- OAUTH FIELDS ---
-      auth_provider: {
-        type: DataTypes.ENUM('local', 'google'),
-        allowNull: false,
-        defaultValue: 'local',
-      },
-      provider_id: {
-        type: DataTypes.STRING,
-        allowNull: true,
-        unique: true,
-      },
-      is_verified: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-      },
-      verification_token: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      password_reset_token: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      password_reset_token_expires: {
-        type: DataTypes.DATE,
-        allowNull: true,
-      },
-      profile_image_url: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      unconfirmed_email: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      email_change_token: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      email_change_token_expires: {
-        type: DataTypes.DATE,
-        allowNull: true,
-      },
-      role: {
-        type: DataTypes.ENUM('user', 'admin'),
-        allowNull: false,
-        defaultValue: 'user',
+  {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    username: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    firstName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    lastName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+      validate: {
+        isEmail: true,
       },
     },
-    {
-      sequelize,
-      modelName: 'User',
-      paranoid: true,
-      hooks: {
-        // This hook only runs if a password is provided
-        beforeCreate: async (user) => {
-          if (user.password_hash) {
+    password_hash: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    preferred_language: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    // --- OAUTH FIELDS ---
+    auth_provider: {
+      type: DataTypes.ENUM("local", "google"),
+      allowNull: false,
+      defaultValue: "local",
+    },
+    provider_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+    },
+    is_verified: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    verification_token: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    password_reset_token: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    password_reset_token_expires: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    profile_image_url: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    unconfirmed_email: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    email_change_token: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    email_change_token_expires: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    is_two_factor_enabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    two_factor_secret: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    two_factor_temp_secret: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    role: {
+      type: DataTypes.ENUM("user", "admin"),
+      allowNull: false,
+      defaultValue: "user",
+    },
+  },
+  {
+    sequelize,
+    modelName: "User",
+    paranoid: true,
+    hooks: {
+      // This hook only runs if a password is provided
+      beforeCreate: async (user) => {
+        if (user.password_hash) {
+          const salt = await bcrypt.genSalt(10);
+          user.password_hash = await bcrypt.hash(user.password_hash, salt);
+        }
+      },
+      beforeUpdate: async (user) => {
+        if (user.changed("password_hash") && user.password_hash) {
+          const isAlreadyHashed =
+            user.password_hash.startsWith("$2a$") ||
+            user.password_hash.startsWith("$2b$");
+          if (!isAlreadyHashed) {
             const salt = await bcrypt.genSalt(10);
             user.password_hash = await bcrypt.hash(user.password_hash, salt);
           }
-        },
-        beforeUpdate: async (user) => {
-          if (user.changed('password_hash') && user.password_hash) {
-            const isAlreadyHashed = user.password_hash.startsWith('$2a$') || user.password_hash.startsWith('$2b$');
-            if (!isAlreadyHashed) {
-                const salt = await bcrypt.genSalt(10);
-                user.password_hash = await bcrypt.hash(user.password_hash, salt);
-            }
-          }
         }
       },
-    }
+    },
+  }
 );

@@ -118,3 +118,24 @@ export const deleteAccountSchema = z.object({
   }),
 });
 
+export const enableTwoFactorAuthSchema = z.object({
+  body: z.object({
+    token: z
+    .string()
+    .length(6, "Invalid token length")
+  })
+})
+
+export const verifyTwoFactorSchema = z.object({
+  body: z.object({
+    userId: z.number().int().positive('Invalid id format'),
+    token: z.string().length(6, 'Invalid token format'),
+  }),
+});
+
+export const disableTwoFactorAuthSchema = z.object({
+  body: z.object({
+    password: z
+    .string().nonempty('Password is required to disable 2FA'),
+  })
+})
