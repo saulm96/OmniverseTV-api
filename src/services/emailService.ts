@@ -44,3 +44,31 @@ export const sendVerificationEmail = async (userEmail: string, token: string) =>
 
     await sendEmail({ to: userEmail, subject, html });
 }
+
+export const sendPasswordResetEmail = async (userEmail: string, token: string) => {
+  const resetLink = `http://localhost:3001/reset-password?token=${token}`;
+  const subject = 'Your Password Reset Request for OmniverseTV';
+  const html = `
+      <h1>Password Reset Request</h1>
+      <p>You requested a password reset. Please click the link below to set a new password:</p>
+      <a href="${resetLink}">Reset My Password</a>
+      <p>This link will expire in 10 minutes.</p>
+      <p>If you did not request a password reset, please ignore this email.</p>
+  `;
+
+  await sendEmail({ to: userEmail, subject, html });
+}
+
+export const sendEmailChangeConfirmation = async (newUserEmail: string, token: string) => {
+  const confirmationLink = `http://localhost:3000/api/v1/users/confirm-email-change?token=${token}`;
+  const subject = 'Confirm Your Email Change for OmniverseTV';
+  const html = `
+      <h1>Email Change Confirmation</h1>
+      <p>Please click the link below to confirm your email change:</p>
+      <a href="${confirmationLink}">Confirm My Email Change</a>
+      <p>This link will expire in 15 minutes.</p>
+      <p>If you did not request an email change, please ignore this email.</p>
+  `;
+
+  await sendEmail({ to: newUserEmail, subject, html });
+}

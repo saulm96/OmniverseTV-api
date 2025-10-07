@@ -5,15 +5,26 @@ import bcrypt from "bcrypt";
 export interface UserAttributes {
     id: number;
     username: string;
+    firstName: string | null;
+    lastName: string | null;
     email: string;
     password_hash: string | null; 
     preferred_language: string;
 
-    // --- OAUTH FIELDS ---
     auth_provider: 'local' | 'google'; 
     provider_id?: string | null; 
     is_verified: boolean; 
-    verification_token?: string | null; 
+    verification_token?: string | null;
+    
+    password_reset_token?: string | null;
+    password_reset_token_expires?: Date | null;
+    profile_image_url?: string | null;
+
+    unconfirmed_email?: string | null;
+    email_change_token?: string | null;
+    email_change_token_expires?: Date | null;
+
+    role: 'user' | 'admin';
 }
 
 interface UserCreationAttributes extends Optional<UserAttributes, 'id'> {}
@@ -22,13 +33,27 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   // --- Database Attributes ---
   public id!: number;
   public username!: string;
+  public firstName!: string | null;
+  public lastName!: string | null;
   public email!: string;
   public password_hash!: string | null; 
   public preferred_language!: string;
+
   public auth_provider!: 'local' | 'google'; 
   public provider_id!: string | null; 
   public is_verified!: boolean; 
   public verification_token!: string | null; 
+
+  public password_reset_token!: string | null;
+  public password_reset_token_expires!: Date | null;
+
+  public profile_image_url!: string | null;
+
+  public unconfirmed_email!: string | null;
+  public email_change_token!: string | null;
+  public email_change_token_expires!: Date | null;
+
+  public role!: 'user' | 'admin';
 
   // Timestamps
   public readonly createdAt!: Date;
@@ -74,6 +99,14 @@ User.init(
         allowNull: false,
         unique: true,
       },
+      firstName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      lastName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       email: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -110,10 +143,40 @@ User.init(
         type: DataTypes.STRING,
         allowNull: true,
       },
+      password_reset_token: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      password_reset_token_expires: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      profile_image_url: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      unconfirmed_email: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      email_change_token: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      email_change_token_expires: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      role: {
+        type: DataTypes.ENUM('user', 'admin'),
+        allowNull: false,
+        defaultValue: 'user',
+      },
     },
     {
       sequelize,
       modelName: 'User',
+      paranoid: true,
       hooks: {
         // This hook only runs if a password is provided
         beforeCreate: async (user) => {
@@ -122,6 +185,15 @@ User.init(
             user.password_hash = await bcrypt.hash(user.password_hash, salt);
           }
         },
+        beforeUpdate: async (user) => {
+          if (user.changed('password_hash') && user.password_hash) {
+            const isAlreadyHashed = user.password_hash.startsWith('$2a$') || user.password_hash.startsWith('$2b$');
+            if (!isAlreadyHashed) {
+                const salt = await bcrypt.genSalt(10);
+                user.password_hash = await bcrypt.hash(user.password_hash, salt);
+            }
+          }
+        }
       },
     }
 );
