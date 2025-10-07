@@ -15,6 +15,9 @@ const usersData = [
     preferred_language: 'en',
     auth_provider: 'local',
     role: 'admin',
+    unconfirmed_email: null,
+    email_change_token: null,
+    email_change_token_expires: null,
     is_verified: true,
   },
   {
@@ -26,6 +29,9 @@ const usersData = [
     preferred_language: 'es',
     auth_provider: 'local',
     role: 'user',
+    unconfirmed_email: null,
+    email_change_token: null,
+    email_change_token_expires: null,
     is_verified: true,
   },
 ] as const;

@@ -98,3 +98,16 @@ export const setPasswordSchema = z.object({
     ),
   }),
 });
+
+export const requestEmailChangeSchema = z.object({
+  body: z.object({
+    newEmail: z.string().email('Invalid new email address'),
+    password: z.string().nonempty('Password is required'),
+  }),
+});
+
+export const confirmEmailChangeSchema = z.object({
+  body: z.object({
+    token: z.string().nonempty('Token is required'),
+  }),
+});

@@ -179,3 +179,15 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
       next(error);
   }
 };
+
+export const confirmEmailChange = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+      const { token } = req.body;
+
+      await authService.confirmEmailChange(token);
+
+      res.status(200).json({ message: 'Email changed successfully!' });
+  } catch (error) {
+      next(error);
+  }
+};

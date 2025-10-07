@@ -1,8 +1,8 @@
 import Router from "express";
-import { register, login, getMe, logout, refreshToken, verifyEmail, googleCallback, forgotPassword, resetPassword } from "../controllers/authController";
+import { register, login, getMe, logout, refreshToken, verifyEmail, googleCallback, forgotPassword, resetPassword, confirmEmailChange } from "../controllers/authController";
 import { protect } from "../middlewares/authMiddleware";
 import { validateRequest } from "../middlewares/validationMiddleware";
-import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "../schemas/authSchemas";
+import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, confirmEmailChangeSchema } from "../schemas/authSchemas";
 import passport from "passport";
 
 /**
@@ -54,6 +54,10 @@ router.get('/google/callback', passport.authenticate('google', { failureRedirect
 // Password Reset Routes
 router.post('/forgot-password', validateRequest(forgotPasswordSchema), forgotPassword);
 router.post('/reset-password', validateRequest(resetPasswordSchema), resetPassword);
+
+// Email Change Routes
+router.post('/confirm-email-change', validateRequest(confirmEmailChangeSchema), confirmEmailChange);
+
 
 
 
