@@ -3,8 +3,19 @@ import {Package} from './Package';
 import Channel from './Channel';
 import {Subscription} from './Subscription';
 import {Translation} from './Translation';
+import {RecoveryCode} from './RecoveryCode';
 
 // ---- Model Relationships ----
+
+//User -> RecoveryCode (One-to-Many)
+User.hasMany(RecoveryCode,{
+  foreignKey:'user_id',
+  as:'recoveryCodes',
+});
+RecoveryCode.belongsTo(User,{
+  foreignKey:'user_id',
+  as:'user',
+});
 
 // User -> Subscription (One-to-Many)
 User.hasMany(Subscription, {
@@ -63,5 +74,5 @@ Channel.hasMany(Translation, {
 });
 
 // Export all defined models
-export { User, Package, Channel, Subscription, Translation };
+export { User, Package, Channel, Subscription, Translation, RecoveryCode };
 

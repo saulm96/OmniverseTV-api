@@ -12,3 +12,14 @@ export const generateVerificationToken = () => {
 
   return { token, hashedToken };
 };
+
+export const generateRecoveryCodes = (): string[] => {
+  const codes: string[] = [];
+  for(let i= 0; i < 10; i++){
+    const random = crypto.randomBytes(4).readUInt32BE(0);
+    const code = (random % 1000000).toString().padStart(8, '0');
+    const formattedCode = `${code.slice(0, 4)}-${code.slice(4)}`
+    codes.push(formattedCode);
+  }
+  return codes;
+}
