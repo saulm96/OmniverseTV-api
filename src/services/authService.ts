@@ -1,27 +1,27 @@
 import { User } from "../models";
 import type { UserAttributes } from "../models/User";
+import { RecoveryCode } from "../models";
+
+import { sendVerificationEmail, sendPasswordResetEmail, sendEmailChangeConfirmation } from "./emailService";
+
 import { generateAuthTokens, verifyRefreshToken } from "../utils/jwt";
-import {
-  ConflictError,
-  NotFoundError,
-  UnauthorizedError,
-  BadRequestError,
-} from "../utils/errors";
+import {ConflictError, NotFoundError, UnauthorizedError, BadRequestError} from "../utils/errors";
 import { generateVerificationToken } from "../utils/generateToken";
-import {
-  sendVerificationEmail,
-  sendPasswordResetEmail,
-  sendEmailChangeConfirmation,
-} from "./emailService";
+import { generateRecoveryCodes } from "../utils/generateToken";
+
 import crypto from "crypto";
 import { Op } from "sequelize";
 import { authenticator } from "otplib";
 import qrcode from "qrcode";
+import bcrypt from "bcrypt";
 
 type LocalRegisterData = Pick<
   UserAttributes,
   "username" | "email" | "password_hash" | "preferred_language"
 >;
+type LoginResult =
+  | { status: "2fa_required"; userId: number }
+  | { status: "success"; accessToken: string; refreshToken: string };
 
 /**
  * Verifies a user's email.
@@ -90,13 +90,9 @@ export const registerUser = async (userData: LocalRegisterData) => {
 /**
  * Logs in a user.
  */
-type LoginResult = 
-  | { status: '2fa_required'; userId: number }
-  | { status: 'success'; accessToken: string; refreshToken: string };
-
 export const loginUser = async (
   credentials: Pick<UserAttributes, "email" | "password_hash">
-): Promise<LoginResult> => {  
+): Promise<LoginResult> => {
   const { email, password_hash: password } = credentials;
 
   const user = await User.findByEmail(email);
@@ -132,65 +128,39 @@ export const loginUser = async (
 
   if (user.is_two_factor_enabled) {
     return {
-      status: '2fa_required' as const,  
+      status: "2fa_required" as const,
       userId: user.id,
     };
   }
 
   const tokens = generateAuthTokens(user);
 
-
   return {
-    status: 'success' as const,  
-    ...tokens
+    status: "success" as const,
+    ...tokens,
   };
 };
 
 export const verifyTwoFactorAuth = async (userId: number, token: string) => {
   const user = await User.findByPk(userId);
   if (!user || !user.is_two_factor_enabled || !user.two_factor_secret) {
-      throw new BadRequestError('2FA is not enabled for this user or the user does not exist.');
+    throw new BadRequestError(
+      "2FA is not enabled for this user or the user does not exist."
+    );
   }
 
   const isValid = authenticator.verify({
-      token,
-      secret: user.two_factor_secret,
+    token,
+    secret: user.two_factor_secret,
   });
 
   if (!isValid) {
-      throw new UnauthorizedError('Invalid 2FA token.');
+    throw new UnauthorizedError("Invalid 2FA token.");
   }
 
   // If the token is valid, generate the final session tokens.
   const tokens = generateAuthTokens(user);
   return tokens;
-};
-
-export const disableTwoFactorAuth = async (userId: number, password: string) => {
-  const user = await User.findByPk(userId);
-  if (!user) {
-      throw new NotFoundError('User not found.');
-  }
-
-  if (!user.is_two_factor_enabled) {
-      throw new BadRequestError('2FA is not currently enabled for this account.');
-  }
-
-  if (user.auth_provider !== 'local' || !user.password_hash) {
-      throw new BadRequestError('Password verification is not possible for this account type.');
-  }
-
-  const isMatch = await user.comparePassword(password);
-  if (!isMatch) {
-      throw new UnauthorizedError('Incorrect password.');
-  }
-
-  // Disable 2FA by clearing the fields
-  user.is_two_factor_enabled = false;
-  user.two_factor_secret = null;
-  user.two_factor_temp_secret = null; // Also clear the temp secret just in case
-
-  await user.save();
 };
 
 /**
@@ -281,23 +251,39 @@ export const resetPassword = async (token: string, newPassword: string) => {
 export const changePassword = async (
   userId: number,
   currentPassword: string,
-  newPassword: string
+  newPassword: string,
+  twoFactorToken?: string
 ) => {
   const user = await User.findByPk(userId);
-
   if (!user) {
-    throw new NotFoundError("User not found.");
+      throw new NotFoundError('User not found.');
   }
 
-  if (user.auth_provider !== "local" || !user.password_hash) {
-    throw new BadRequestError(
-      "Password cannot be changed for this account type."
-    );
+  if (user.auth_provider !== 'local' || !user.password_hash) {
+      throw new BadRequestError('Password cannot be changed for this account type.');
+  }
+
+  if (user.is_two_factor_enabled) {
+      if (!twoFactorToken) {
+          throw new UnauthorizedError('2FA token is required.');
+      }
+      if (!user.two_factor_secret) { 
+          throw new BadRequestError('2FA is enabled but no secret is configured for this account.');
+      }
+      
+      const isValid = authenticator.verify({
+          token: twoFactorToken,
+          secret: user.two_factor_secret,
+      });
+
+      if (!isValid) {
+          throw new UnauthorizedError('Invalid 2FA token.');
+      }
   }
 
   const isMatch = await user.comparePassword(currentPassword);
   if (!isMatch) {
-    throw new UnauthorizedError("Incorrect current password.");
+      throw new UnauthorizedError('Incorrect current password.');
   }
 
   user.password_hash = newPassword;
@@ -411,35 +397,119 @@ export const setupTwoFactorAuth = async (userId: number) => {
 
   //Generate a QR code
   const qrCodeDataUrl = await qrcode.toDataURL(otpauth);
-  return{secret, qrCodeDataUrl};
+  return { secret, qrCodeDataUrl };
 };
 
 /**
  * Enables 2FA for the user
- * @param userId The Id of the user
- * @param token The 2FA token
  */
-
 export const enableTwoFactorAuth = async (userId: number, token: string) => {
-    const user = await User.findByPk(userId);
-    if (!user || !user.two_factor_temp_secret) {
-        throw new BadRequestError('2FA setup was not initiated or has expired.');
-    }
+  const user = await User.findByPk(userId);
+  if (!user || !user.two_factor_temp_secret) {
+    throw new BadRequestError("2FA setup was not initiated or has expired.");
+  }
 
-    // Verify the token against the temporary secret
-    const isValid = authenticator.verify({
-        token,
-        secret: user.two_factor_temp_secret,
-    });
+  const isValid = authenticator.verify({
+    token,
+    secret: user.two_factor_temp_secret,
+  });
 
-    if (!isValid) {
-        throw new BadRequestError('Invalid 2FA token.');
-    }
+  if (!isValid) {
+    throw new BadRequestError("Invalid 2FA token.");
+  }
 
-    // If valid, move the secret to the permanent field and enable 2FA
-    user.two_factor_secret = user.two_factor_temp_secret;
-    user.two_factor_temp_secret = null;
-    user.is_two_factor_enabled = true;
-    await user.save();
+  const plaintextRecoveryCodes = generateRecoveryCodes();
+
+  const hashedRecoveryCodes = await Promise.all(
+    plaintextRecoveryCodes.map((code) => bcrypt.hash(code, 10))
+  );
+
+  await RecoveryCode.destroy({ where: { user_id: userId } });
+
+  const codesToInsert = hashedRecoveryCodes.map((hashedCode) => ({
+    code: hashedCode,
+    user_id: userId,
+    is_used: false,
+  }));
+  await RecoveryCode.bulkCreate(codesToInsert);
+
+  user.two_factor_secret = user.two_factor_temp_secret;
+  user.two_factor_temp_secret = null;
+  user.is_two_factor_enabled = true;
+  await user.save();
+
+  return { recoveryCodes: plaintextRecoveryCodes };
 };
 
+export const disableTwoFactorAuth = async (
+  userId: number,
+  password: string
+) => {
+  const user = await User.findByPk(userId);
+  if (!user) {
+    throw new NotFoundError("User not found.");
+  }
+
+  if (!user.is_two_factor_enabled) {
+    throw new BadRequestError("2FA is not currently enabled for this account.");
+  }
+
+  if (user.auth_provider !== "local" || !user.password_hash) {
+    throw new BadRequestError(
+      "Password verification is not possible for this account type."
+    );
+  }
+
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) {
+    throw new UnauthorizedError("Incorrect password.");
+  }
+
+  // Disable 2FA by clearing the fields
+  user.is_two_factor_enabled = false;
+  user.two_factor_secret = null;
+  user.two_factor_temp_secret = null; // Also clear the temp secret just in case
+
+  await user.save();
+};
+
+/**
+ * Allows a user to log in using a 2FA recovery code.
+ * On success, it grants a session and disables 2FA for security.
+ * @param email The user's email.
+ * @param recoveryCode The plaintext recovery code provided by the user.
+ * @returns An object containing the accessToken and refreshToken.
+ */
+export const recoverTwoFactorAuth = async(email: string, recoveryCode: string) => {
+  const user = await User.findByEmail(email);
+  if(!user || !user.is_two_factor_enabled) throw new UnauthorizedError("Invalid email or 2FA is not enabled.")
+
+    //Fetch all UNUSED codes for this user
+    const availableCodes = await RecoveryCode.findAll({
+      where: {
+        user_id: user.id,
+        is_used: false,
+      }
+    })
+    let matchedCode: RecoveryCode | null = null;
+
+    for(const dbCode of availableCodes){
+      const isMatch = await bcrypt.compare(recoveryCode, dbCode.code);
+      if(isMatch){
+        matchedCode = dbCode;
+        dbCode.is_used = true;
+        await dbCode.save();
+        break;
+      }
+    }
+
+    if(!matchedCode) throw new UnauthorizedError("Invalid recovery code.");
+
+    //Mark the code as used
+    user.is_two_factor_enabled = false;
+    user.two_factor_secret = null;
+    await user.save();
+
+    const tokens = generateAuthTokens(user);
+    return tokens;
+}

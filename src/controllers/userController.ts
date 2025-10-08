@@ -64,9 +64,9 @@ export const changePassword = async (
   try {
     const user = req.user as UserModel;
     const userId = user.id;
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword, twoFactorToken } = req.body;
 
-    await authService.changePassword(userId, currentPassword, newPassword);
+    await authService.changePassword(userId, currentPassword, newPassword, twoFactorToken);
 
     res.status(200).json({ message: "Password changed successfully!" });
   } catch (error) {
@@ -153,7 +153,7 @@ export const setupTwoFactorAuth = async (
       message:
         "Scan the QR code with your authenticator app or enter the secret manually",
       secret,
-      qrCode: qrCodeDataUrl, //For displaying the QR code
+      qrCode: qrCodeDataUrl,
     });
   } catch (error) {
     next(error);
@@ -169,8 +169,17 @@ export const enableTwoFactorAuth = async (
     const user = req.user as UserModel;
     const userId = user.id;
     const { token } = req.body;
-    await authService.enableTwoFactorAuth(userId, token);
-    res.status(200).json({ message: "2FA has been enable succesfully" });
+
+    const { recoveryCodes } = await authService.enableTwoFactorAuth(
+      userId,
+      token
+    );
+
+    res.status(200).json({
+      message:
+        "2FA has been enabled successfully! Please save these recovery codes in a safe place.",
+      recoveryCodes,
+    });
   } catch (error) {
     next(error);
   }

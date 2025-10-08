@@ -220,3 +220,26 @@ export const confirmEmailChange = async (req: Request, res: Response, next: Next
       next(error);
   }
 };
+
+export const recoverTwoFactorAuth = async (req: Request, res: Response, next: NextFunction) => {
+  try{
+    const {email, recoveryCode} = req.body;
+    const {accessToken, refreshToken} = await authService.recoverTwoFactorAuth(email, recoveryCode);
+    
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({ message: "Acount recovered succesfully. 2FA has been disabled." });
+  } catch (error) {
+    next(error);
+  }
+}

@@ -1,8 +1,8 @@
 import Router from "express";
-import { register, login, getMe, logout, refreshToken, verifyEmail, googleCallback, forgotPassword, resetPassword, confirmEmailChange, verifyTwoFactorAuth } from "../controllers/authController";
+import { register, login, getMe, logout, refreshToken, verifyEmail, googleCallback, forgotPassword, resetPassword, confirmEmailChange, verifyTwoFactorAuth, recoverTwoFactorAuth } from "../controllers/authController";
 import { protect } from "../middlewares/authMiddleware";
 import { validateRequest } from "../middlewares/validationMiddleware";
-import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, confirmEmailChangeSchema, verifyTwoFactorSchema } from "../schemas/authSchemas";
+import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, confirmEmailChangeSchema, verifyTwoFactorSchema, recoverTwoFactorSchema } from "../schemas/authSchemas";
 import passport from "passport";
 
 /**
@@ -29,7 +29,7 @@ router.post('/register', validateRequest(registerSchema), register);
  */
 router.post('/login', validateRequest(loginSchema), login);
 router.post('/2fa/verify', validateRequest(verifyTwoFactorSchema), verifyTwoFactorAuth);
-
+router.post('/2fa/recover', validateRequest(recoverTwoFactorSchema), recoverTwoFactorAuth);
 /**
  * POST /auth/logout
  * Invalidate user session
