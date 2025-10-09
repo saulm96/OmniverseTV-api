@@ -1,8 +1,8 @@
 import {Router} from "express";
 import {validateRequest} from "../middlewares/validationMiddleware";
-import {updateProfileSchema, changePasswordSchema, setPasswordSchema, requestEmailChangeSchema, deleteAccountSchema} from "../schemas/authSchemas";
-import {updateProfile, changePassword, uploadProfileImage, setPasswordForGoogleAccount, requestEmailChange, deleteAccount} from "../controllers/userController";
-import {upload} from "../middlewares/uploadMiddleware"
+import {updateProfileSchema, changePasswordSchema, setPasswordSchema, requestEmailChangeSchema, deleteAccountSchema, enableTwoFactorAuthSchema, disableTwoFactorAuthSchema} from "../schemas/authSchemas";
+import {updateProfile, changePassword, uploadProfileImage, setPasswordForGoogleAccount, requestEmailChange, deleteAccount, setupTwoFactorAuth, enableTwoFactorAuth, disableTwoFactorAuth} from "../controllers/userController";
+import {upload} from "../middlewares/uploadMiddleware"  
 const router = Router();
 
 //Al the routes are protected
@@ -15,4 +15,12 @@ router.post('/me/set-password', validateRequest(setPasswordSchema), setPasswordF
 
 router.post('/me/request-email-change', validateRequest(requestEmailChangeSchema), requestEmailChange);
 router.delete('/me', validateRequest(deleteAccountSchema), deleteAccount);
+
+router.post('/me/2fa/setup', setupTwoFactorAuth);
+router.post('/me/2fa/enable', validateRequest(enableTwoFactorAuthSchema), enableTwoFactorAuth);
+router.post('/me/2fa/disable',validateRequest(disableTwoFactorAuthSchema) ,disableTwoFactorAuth);
+
+
+
+
 export default router;

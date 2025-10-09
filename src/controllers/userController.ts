@@ -64,9 +64,9 @@ export const changePassword = async (
   try {
     const user = req.user as UserModel;
     const userId = user.id;
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword, twoFactorToken } = req.body;
 
-    await authService.changePassword(userId, currentPassword, newPassword);
+    await authService.changePassword(userId, currentPassword, newPassword, twoFactorToken);
 
     res.status(200).json({ message: "Password changed successfully!" });
   } catch (error) {
@@ -127,12 +127,77 @@ export const deleteAccount = async (
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge:0
+      maxAge: 0,
     };
     res.clearCookie("accessToken", cookieOptions);
     res.clearCookie("refreshToken", cookieOptions);
 
     res.status(200).json({ message: "Account deleted successfully!" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const setupTwoFactorAuth = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user = req.user as UserModel;
+    const userId = user.id;
+    const { secret, qrCodeDataUrl } = await authService.setupTwoFactorAuth(
+      userId
+    );
+    res.status(200).json({
+      message:
+        "Scan the QR code with your authenticator app or enter the secret manually",
+      secret,
+      qrCode: qrCodeDataUrl,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const enableTwoFactorAuth = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user = req.user as UserModel;
+    const userId = user.id;
+    const { token } = req.body;
+
+    const { recoveryCodes } = await authService.enableTwoFactorAuth(
+      userId,
+      token
+    );
+
+    res.status(200).json({
+      message:
+        "2FA has been enabled successfully! Please save these recovery codes in a safe place.",
+      recoveryCodes,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const disableTwoFactorAuth = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user = req.user as UserModel;
+    const userId = user.id;
+    const { password } = req.body;
+
+    await authService.disableTwoFactorAuth(userId, password);
+
+    res.status(200).json({ message: "2FA has been disabled successfully." });
   } catch (error) {
     next(error);
   }
