@@ -8,6 +8,7 @@ import { generateAuthTokens, verifyRefreshToken } from "../utils/jwt";
 import {ConflictError, NotFoundError, UnauthorizedError, BadRequestError} from "../utils/errors";
 import { generateVerificationToken } from "../utils/generateToken";
 import { generateRecoveryCodes } from "../utils/generateToken";
+import { encrypt, decrypt } from "../utils/encryption";
 
 import crypto from "crypto";
 import { Op } from "sequelize";
@@ -148,10 +149,10 @@ export const verifyTwoFactorAuth = async (userId: number, token: string) => {
       "2FA is not enabled for this user or the user does not exist."
     );
   }
-
+  const decryptedSecret = decrypt(user.two_factor_secret);
   const isValid = authenticator.verify({
     token,
-    secret: user.two_factor_secret,
+    secret: decryptedSecret,
   });
 
   if (!isValid) {
@@ -270,10 +271,10 @@ export const changePassword = async (
       if (!user.two_factor_secret) { 
           throw new BadRequestError('2FA is enabled but no secret is configured for this account.');
       }
-      
+      const decryptedSecret = decrypt(user.two_factor_secret);
       const isValid = authenticator.verify({
           token: twoFactorToken,
-          secret: user.two_factor_secret,
+          secret: decryptedSecret,
       });
 
       if (!isValid) {
@@ -433,7 +434,7 @@ export const enableTwoFactorAuth = async (userId: number, token: string) => {
   }));
   await RecoveryCode.bulkCreate(codesToInsert);
 
-  user.two_factor_secret = user.two_factor_temp_secret;
+  user.two_factor_secret = encrypt(user.two_factor_temp_secret!);
   user.two_factor_temp_secret = null;
   user.is_two_factor_enabled = true;
   await user.save();
@@ -468,7 +469,7 @@ export const disableTwoFactorAuth = async (
   // Disable 2FA by clearing the fields
   user.is_two_factor_enabled = false;
   user.two_factor_secret = null;
-  user.two_factor_temp_secret = null; // Also clear the temp secret just in case
+  user.two_factor_temp_secret = null; 
 
   await user.save();
 };
@@ -505,7 +506,6 @@ export const recoverTwoFactorAuth = async(email: string, recoveryCode: string) =
 
     if(!matchedCode) throw new UnauthorizedError("Invalid recovery code.");
 
-    //Mark the code as used
     user.is_two_factor_enabled = false;
     user.two_factor_secret = null;
     await user.save();
