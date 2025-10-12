@@ -10,21 +10,33 @@ export const register = async (
   next: NextFunction
 ) => {
   try {
-    const { username, email, password, preferred_language } = req.body;
-
-    if (!username || !email || !password || !preferred_language) {
-      throw new BadRequestError("Missing required fields");
-    }
-
-    const newUser = await authService.registerUser({
+    const {
       username,
       email,
-      password_hash: password, 
+      password,
       preferred_language,
-    });
+      role,
+      firstName,
+      lastName,
+    } = req.body;
+
+    // 1. Separamos los datos del perfil y los de autenticación
+    const profileData = {
+      username,
+      email,
+      preferred_language,
+      role,
+      firstName,
+      lastName,
+    };
+    const authData = { password_hash: password };
+
+    // 2. Llamamos al servicio refactorizado con los dos objetos
+    const newUser = await authService.registerUser(profileData, authData);
 
     res.status(201).json({
-      message: "User registered succesfully! Please check your email to verify your account.", 
+      message:
+        "User registered succesfully! Please check your email to verify your account.",
       user: newUser,
     });
   } catch (error) {
@@ -48,27 +60,41 @@ export const login = async (
       password_hash: password,
     });
 
-    if (result.status === '2fa_required') {
+    if (result.status === "2fa_required") {
       return res.status(200).json({
-        message: '2FA token required.',
+        message: "2FA token required.",
         userId: result.userId,
       });
     } else {
-      const { accessToken, refreshToken } = result;
+      // Ahora 'result' también contiene 'user'
+      const { accessToken, refreshToken, user } = result;
 
       res.cookie("accessToken", accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         maxAge: 15 * 60 * 1000,
       });
-
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      res.status(200).json({ message: "Login successful!" });
+      // Enviamos el perfil del usuario en la respuesta
+      res
+        .status(200)
+        .json({
+          message: "Login successful!",
+          user: {
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            username: user.username,
+            email: user.email,
+            profile_image_url: user.profile_image_url,
+            preferred_language: user.preferred_language,
+          },
+        });
     }
   } catch (error) {
     next(error);
@@ -81,9 +107,12 @@ export const verifyTwoFactorAuth = async (
   next: NextFunction
 ) => {
   try {
-    const {userId, token} = req.body;
-    const {accessToken, refreshToken} = await authService.verifyTwoFactorAuth(userId, token);
-    
+    const { userId, token } = req.body;
+    const { accessToken, refreshToken } = await authService.verifyTwoFactorAuth(
+      userId,
+      token
+    );
+
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -107,9 +136,9 @@ export const logout = (req: Request, res: Response) => {
   const cookiesOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    maxAge:0
+    maxAge: 0,
   };
-  
+
   res.clearCookie("accessToken", cookiesOptions);
   res.clearCookie("refreshToken", cookiesOptions);
 
@@ -125,18 +154,17 @@ export const refreshToken = async (
     const { refreshToken: token } = req.cookies;
     const { newAccessToken } = await authService.refreshUserSession(token);
 
-    res.cookie('accessToken', newAccessToken, {
+    res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === "production",
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
-    res.status(200).json({ message: 'Access token refreshed successfully.' });
+    res.status(200).json({ message: "Access token refreshed successfully." });
   } catch (error) {
     next(error);
   }
 };
-
 
 export const verifyEmail = async (
   req: Request,
@@ -146,15 +174,17 @@ export const verifyEmail = async (
   try {
     const { token } = req.query;
 
-    if (!token || typeof token !== 'string') {
-      throw new BadRequestError('Verification token is missing or invalid.');
+    if (!token || typeof token !== "string") {
+      throw new BadRequestError("Verification token is missing or invalid.");
     }
 
     await authService.verifyUserEmail(token);
 
     // En una aplicación real, aquí redirigirías al frontend
     // res.redirect('http://tu-frontend.com/login?verified=true');
-    res.status(200).json({ message: "Email verified successfully. You can now log in." });
+    res
+      .status(200)
+      .json({ message: "Email verified successfully. You can now log in." });
   } catch (error) {
     next(error);
   }
@@ -175,10 +205,9 @@ export const googleCallback = (req: Request, res: Response) => {
     secure: process.env.NODE_ENV === "production",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
-  
-  res.redirect('http://localhost:3001/dashboard');
-};
 
+  res.redirect("http://localhost:3001/dashboard");
+};
 
 export const getMe = (req: Request, res: Response) => {
   // The user object is attached to the request by the 'protect' middleware
@@ -190,42 +219,59 @@ export const getMe = (req: Request, res: Response) => {
   });
 };
 
-export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+export const forgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-      await authService.forgotPassword(req.body.email);
-      res.status(200).json({ message: 'A password reset link has been sent.' });
+    await authService.forgotPassword(req.body.email);
+    res.status(200).json({ message: "A password reset link has been sent." });
   } catch (error) {
-      next(error);
+    next(error);
   }
 };
 
-export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+export const resetPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-      const { token, password } = req.body;
-      await authService.resetPassword(token, password);
-      res.status(200).json({ message: 'Password has been reset successfully.' });
+    const { token, password } = req.body;
+    await authService.resetPassword(token, password);
+    res.status(200).json({ message: "Password has been reset successfully." });
   } catch (error) {
-      next(error);
+    next(error);
   }
 };
 
-export const confirmEmailChange = async (req: Request, res: Response, next: NextFunction) => {
+export const confirmEmailChange = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-      const { token } = req.body;
+    const { token } = req.body;
 
-      await authService.confirmEmailChange(token);
+    await authService.confirmEmailChange(token);
 
-      res.status(200).json({ message: 'Email changed successfully!' });
+    res.status(200).json({ message: "Email changed successfully!" });
   } catch (error) {
-      next(error);
+    next(error);
   }
 };
 
-export const recoverTwoFactorAuth = async (req: Request, res: Response, next: NextFunction) => {
-  try{
-    const {email, recoveryCode} = req.body;
-    const {accessToken, refreshToken} = await authService.recoverTwoFactorAuth(email, recoveryCode);
-    
+export const recoverTwoFactorAuth = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email, recoveryCode } = req.body;
+    const { accessToken, refreshToken } =
+      await authService.recoverTwoFactorAuth(email, recoveryCode);
+
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -238,8 +284,12 @@ export const recoverTwoFactorAuth = async (req: Request, res: Response, next: Ne
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.status(200).json({ message: "Acount recovered succesfully. 2FA has been disabled." });
+    res
+      .status(200)
+      .json({
+        message: "Acount recovered succesfully. 2FA has been disabled.",
+      });
   } catch (error) {
     next(error);
   }
-}
+};

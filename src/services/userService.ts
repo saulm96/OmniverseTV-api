@@ -1,5 +1,5 @@
 import { v2 as cloudinary } from 'cloudinary';
-import { User } from '../models';
+import { User, UserAuth } from '../models';
 import { BadRequestError, ConflictError, NotFoundError, UnauthorizedError } from '../utils/errors';
 
 cloudinary.config({
@@ -97,16 +97,26 @@ export const uploadProfileImage = async (
   };
 };
 
-export const deleteAccount = async (userId: number, password: string) => {
-  const user = await User.findByPk(userId);
-  if (!user) throw new NotFoundError("User not found");
+export const deleteUserAccount = async (userId: number, password: string) => {
+  // 1. Buscamos los datos de autenticación del usuario
+  const userAuth = await UserAuth.findOne({ where: { user_id: userId } });
+  if (!userAuth || userAuth.auth_provider !== 'local' || !userAuth.password_hash) {
+      throw new BadRequestError('Account cannot be deleted with a password.');
+  }
 
-if (user.auth_provider !== 'local' || !user.password_hash) {
-    throw new BadRequestError('This action is not available for this account.');
-}
+  // 2. Verificamos la contraseña usando el método de UserAuth
+  const isMatch = await userAuth.comparePassword(password);
+  if (!isMatch) {
+      throw new UnauthorizedError('Incorrect password.');
+  }
 
-  const isMatch = await user.comparePassword(password);
-  if (!isMatch) throw new UnauthorizedError("Incorrect password");
-
-  await user.destroy();
+  // 3. Buscamos el perfil de usuario para "destruirlo" (borrado suave)
+  const userToDestroy = await User.findByPk(userId);
+  if (!userToDestroy) {
+      throw new NotFoundError('User not found.');
+  }
+  
+  // Esto aplicará el borrado suave en la tabla 'Users'.
+  // La clave foránea se encargará de la fila en 'UserAuths' según la configuración (CASCADE).
+  await userToDestroy.destroy();
 };
