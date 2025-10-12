@@ -1,41 +1,43 @@
 import { sequelize } from "./connection";
 import { Package } from "../../models/Package";
 import { User } from "../../models/User";
+import { UserAuth } from "../../models/UserAuth"; 
 import Channel from "../../models/Channel";
 import "../../models/index";
 
-//sample data fot USERS
 const usersData = [
   {
-    username: 'AdminUser',
-    firstName: 'Admin', 
-    lastName: 'Omniverse', 
-    email: 'admin@omniverse.tv',
-    password_hash: 'AdminPassword123!',
-    preferred_language: 'en',
-    auth_provider: 'local',
-    role: 'admin',
-    unconfirmed_email: null,
-    email_change_token: null,
-    email_change_token_expires: null,
-    is_verified: true,
+    profile: {
+      username: 'AdminUser',
+      firstName: 'Admin',
+      lastName: 'Omniverse',
+      email: 'admin@omniverse.tv',
+      preferred_language: 'en',
+      role: 'admin',
+    },
+    auth: {
+      password_hash: 'AdminPassword123!',
+      auth_provider: 'local',
+      is_verified: true,
+    }
   },
   {
-    username: 'RegularUser',
-    firstName: 'Rick', 
-    lastName: 'Sanchez', 
-    email: 'user@omniverse.tv',
-    password_hash: 'UserPassword123!',
-    preferred_language: 'es',
-    auth_provider: 'local',
-    role: 'user',
-    unconfirmed_email: null,
-    email_change_token: null,
-    email_change_token_expires: null,
-    is_verified: true,
+    profile: {
+      username: 'RegularUser',
+      firstName: 'Rick',
+      lastName: 'Sanchez',
+      email: 'user@omniverse.tv',
+      preferred_language: 'es',
+      role: 'user',
+    },
+    auth: {
+      password_hash: 'UserPassword123!',
+      auth_provider: 'local',
+      is_verified: true,
+    }
   },
 ] as const;
-// Sample data for seeding
+
 const packagesData = [
   {
     name: "Cosmic Comedy Central",
@@ -58,7 +60,6 @@ const packagesData = [
 ];
 
 const channelsData = [
-  // Comedy Channels
   {
     name: "Giggle Galaxy TV",
     description: "24/7 stand-up from humanoid and non-humanoid comedians.",
@@ -70,8 +71,6 @@ const channelsData = [
       "Hidden camera shows featuring elaborate interdimensional pranks.",
     dimension_origin: "Dimension 42-J",
   },
-
-  // Mystery Channels
   {
     name: "Noir Nebula Network",
     description:
@@ -84,8 +83,6 @@ const channelsData = [
       "Interactive mystery channel where viewers vote on the next clue.",
     dimension_origin: "Dimension ?-?",
   },
-
-  // Sports Channels
   {
     name: "Blernsball Bonanza",
     description: "The official home of the Universal Blernsball Association.",
@@ -109,21 +106,39 @@ const seedDatabase = async () => {
     await sequelize.query("SET FOREIGN_KEY_CHECKS = 1;");
     console.log("Database synchronized. Tables dropped and recreated.");
 
-    // --- Create Users, Packages, and Channels ---
-    const [createdUsers, createdPackages, createdChannels] = await Promise.all([
-      User.bulkCreate(usersData, { individualHooks: true }),
+    const [createdPackages, createdChannels] = await Promise.all([
       Package.bulkCreate(packagesData),
       Channel.bulkCreate(channelsData),
     ]);
-    console.log(`Created ${createdUsers.length} users.`);
     console.log(`Created ${createdPackages.length} packages.`);
     console.log(`Created ${createdChannels.length} channels.`);
 
-    // Associate Channels with Packages
+    console.log('Creating users and their auth data...');
+    for (const userData of usersData) {
+      const newUser = await User.create(userData.profile);
+      
+      await UserAuth.create({
+        ...userData.auth,
+        user_id: newUser.id,
+        is_two_factor_enabled: false,
+        two_factor_secret: null,
+        two_factor_temp_secret: null,
+        verification_token: null,
+        password_reset_token: null,
+        password_reset_token_expires: null,
+        email_change_token: null,
+        email_change_token_expires: null,
+        unconfirmed_email: null,
+        provider_id: null,
+        
+      });
+    }
+    console.log(`Created ${usersData.length} users.`);
+
     await Promise.all([
-      createdPackages[0].addChannels([createdChannels[0], createdChannels[1]]), // Comedy
-      createdPackages[1].addChannels([createdChannels[2], createdChannels[3]]), // Mystery
-      createdPackages[2].addChannels([createdChannels[4], createdChannels[5]]), // Sports
+      createdPackages[0].addChannels([createdChannels[0], createdChannels[1]]),
+      createdPackages[1].addChannels([createdChannels[2], createdChannels[3]]),
+      createdPackages[2].addChannels([createdChannels[4], createdChannels[5]]),
     ]);
     console.log("Channels associated with packages.");
 

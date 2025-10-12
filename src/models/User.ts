@@ -1,6 +1,5 @@
 import { DataTypes, Model, Optional } from "sequelize";
 import { sequelize } from "../config/database/connection";
-import bcrypt from "bcrypt";
 
 export interface UserAttributes {
   id: number;
@@ -8,26 +7,8 @@ export interface UserAttributes {
   firstName: string | null;
   lastName: string | null;
   email: string;
-  password_hash: string | null;
   preferred_language: string;
-
-  auth_provider: "local" | "google";
-  provider_id?: string | null;
-  is_verified: boolean;
-  verification_token?: string | null;
-
-  password_reset_token?: string | null;
-  password_reset_token_expires?: Date | null;
   profile_image_url?: string | null;
-
-  unconfirmed_email?: string | null;
-  email_change_token?: string | null;
-  email_change_token_expires?: Date | null;
-
-  is_two_factor_enabled?: boolean;
-  two_factor_secret?: string | null;
-  two_factor_temp_secret?: string | null;
-
   role: "user" | "admin";
 }
 
@@ -43,58 +24,15 @@ export class User
   public firstName!: string | null;
   public lastName!: string | null;
   public email!: string;
-  public password_hash!: string | null;
   public preferred_language!: string;
-
-  public auth_provider!: "local" | "google";
-  public provider_id!: string | null;
-  public is_verified!: boolean;
-  public verification_token!: string | null;
-
-  public password_reset_token!: string | null;
-  public password_reset_token_expires!: Date | null;
-
   public profile_image_url!: string | null;
-
-  public unconfirmed_email!: string | null;
-  public email_change_token!: string | null;
-  public email_change_token_expires!: Date | null;
-
-  public is_two_factor_enabled!: boolean;
-  public two_factor_secret!: string | null;
-  public two_factor_temp_secret!: string | null;
-
   public role!: "user" | "admin";
+
 
   // Timestamps
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
-  // --- INSTANCE METHODS ---
-
-  /**
-   * Compares a candidate password with the user's hashed password.
-   * @param candidatePassword The password to compare.
-   * @returns A promise that resolves to true if the passwords match, false otherwise.
-   */
-  public comparePassword(candidatePassword: string): Promise<boolean> {
-    // A user logged in with Google won't have a password_hash
-    if (!this.password_hash) {
-      return Promise.resolve(false);
-    }
-    return bcrypt.compare(candidatePassword, this.password_hash);
-  }
-
-  // --- CLASS METHODS ---
-
-  /**
-   * Finds a user by their email address.
-   * @param email The email to search for.
-   * @returns A promise that resolves to the User instance or null if not found.
-   */
-  public static findByEmail(email: string): Promise<User | null> {
-    return User.findOne({ where: { email } });
-  }
 }
 
 //Initialize the model
@@ -126,68 +64,11 @@ User.init(
         isEmail: true,
       },
     },
-    password_hash: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
     preferred_language: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    // --- OAUTH FIELDS ---
-    auth_provider: {
-      type: DataTypes.ENUM("local", "google"),
-      allowNull: false,
-      defaultValue: "local",
-    },
-    provider_id: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      unique: true,
-    },
-    is_verified: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    verification_token: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    password_reset_token: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    password_reset_token_expires: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
     profile_image_url: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    unconfirmed_email: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    email_change_token: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    email_change_token_expires: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    is_two_factor_enabled: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    two_factor_secret: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    two_factor_temp_secret: {
       type: DataTypes.STRING,
       allowNull: true,
     },
@@ -201,25 +82,5 @@ User.init(
     sequelize,
     modelName: "User",
     paranoid: true,
-    hooks: {
-      // This hook only runs if a password is provided
-      beforeCreate: async (user) => {
-        if (user.password_hash) {
-          const salt = await bcrypt.genSalt(10);
-          user.password_hash = await bcrypt.hash(user.password_hash, salt);
-        }
-      },
-      beforeUpdate: async (user) => {
-        if (user.changed("password_hash") && user.password_hash) {
-          const isAlreadyHashed =
-            user.password_hash.startsWith("$2a$") ||
-            user.password_hash.startsWith("$2b$");
-          if (!isAlreadyHashed) {
-            const salt = await bcrypt.genSalt(10);
-            user.password_hash = await bcrypt.hash(user.password_hash, salt);
-          }
-        }
-      },
-    },
   }
 );

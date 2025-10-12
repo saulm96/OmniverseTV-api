@@ -4,8 +4,19 @@ import Channel from './Channel';
 import {Subscription} from './Subscription';
 import {Translation} from './Translation';
 import {RecoveryCode} from './RecoveryCode';
+import {UserAuth} from './UserAuth';
 
 // ---- Model Relationships ----
+
+//User -> UserAuth (One-to-One)
+User.hasOne(UserAuth, {
+  foreignKey: 'user_id',
+  as: 'userAuth',
+});
+UserAuth.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
 
 //User -> RecoveryCode (One-to-Many)
 User.hasMany(RecoveryCode,{
@@ -74,5 +85,5 @@ Channel.hasMany(Translation, {
 });
 
 // Export all defined models
-export { User, Package, Channel, Subscription, Translation, RecoveryCode };
+export { User, Package, Channel, Subscription, Translation, RecoveryCode, UserAuth };
 
