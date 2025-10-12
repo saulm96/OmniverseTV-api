@@ -26,14 +26,12 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
         throw new UnauthorizedError('Invalid token payload.');
     }
 
-    // Find the user associated with the token
-    const currentUser = await User.findByPk(decoded.userId);
-    if (!currentUser) {
-      throw new UnauthorizedError('User belonging to this token no longer exists.');
+    const userProfile = await User.findByPk(decoded.userId);
+    if (!userProfile) {
+        throw new UnauthorizedError('User belonging to this token no longer exists.');
     }
 
-    // Attach user to the request object
-    req.user = currentUser;
+    req.user = userProfile.get({plain: true});
     next();
   } catch (error) {
     // Forward the error to the Express error handler

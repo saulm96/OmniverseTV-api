@@ -42,14 +42,14 @@ export const uploadProfileImage = async (
       return res.status(401).json({ message: "User not authenticated" });
     }
 
-    const updateUser = await userService.uploadProfileImage(
+    const updatedUser = await userService.uploadProfileImage(
       userId,
       req.file.buffer
     );
 
     res.status(200).json({
       message: "Profile image updated successfully!",
-      user: updateUser,
+      user: updatedUser,
     });
   } catch (error) {
     next(error);
@@ -66,7 +66,12 @@ export const changePassword = async (
     const userId = user.id;
     const { currentPassword, newPassword, twoFactorToken } = req.body;
 
-    await authService.changePassword(userId, currentPassword, newPassword, twoFactorToken);
+    await authService.changePassword(
+      userId,
+      currentPassword,
+      newPassword,
+      twoFactorToken
+    );
 
     res.status(200).json({ message: "Password changed successfully!" });
   } catch (error) {
@@ -74,7 +79,7 @@ export const changePassword = async (
   }
 };
 
-export const setPasswordForGoogleAccount = async (
+export const setPassword = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -84,7 +89,7 @@ export const setPasswordForGoogleAccount = async (
     const userId = user.id;
     const { password } = req.body;
 
-    await authService.setPasswordForGoogleAccount(userId, password);
+    await authService.setPasswordForGoogleUser(userId, password);
 
     res.status(200).json({ message: "Password set successfully!" });
   } catch (error) {
@@ -122,12 +127,11 @@ export const deleteAccount = async (
     const userId = user.id;
     const { password } = req.body;
 
-    await userService.deleteAccount(userId, password);
-    //Logout the user by clearing the session cookies
+    await userService.deleteUserAccount(userId, password);
+
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 0,
     };
     res.clearCookie("accessToken", cookieOptions);
     res.clearCookie("refreshToken", cookieOptions);
