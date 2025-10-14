@@ -33,7 +33,7 @@ const sendEmail = async (options: MailOptions) => {
 };
 
 export const sendVerificationEmail = async (userEmail: string, token: string) => {
-    const verificationLink = `http://localhost:3000/api/v1/auth/verify-email?token=${token}`;
+    const verificationLink = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
     const subject = 'Verify Your OmniverseTV Account';
     const html = `
         <h1>Welcome to OmniverseTV!</h1>
@@ -46,7 +46,7 @@ export const sendVerificationEmail = async (userEmail: string, token: string) =>
 }
 
 export const sendPasswordResetEmail = async (userEmail: string, token: string) => {
-  const resetLink = `http://localhost:3001/reset-password?token=${token}`;
+  const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${token}`;
   const subject = 'Your Password Reset Request for OmniverseTV';
   const html = `
       <h1>Password Reset Request</h1>
@@ -60,7 +60,7 @@ export const sendPasswordResetEmail = async (userEmail: string, token: string) =
 }
 
 export const sendEmailChangeConfirmation = async (newUserEmail: string, token: string) => {
-  const confirmationLink = `http://localhost:3000/api/v1/users/confirm-email-change?token=${token}`;
+  const confirmationLink = `${process.env.CLIENT_URL}/confirm-email-change?token=${token}`;
   const subject = 'Confirm Your Email Change for OmniverseTV';
   const html = `
       <h1>Email Change Confirmation</h1>

@@ -4,10 +4,12 @@ dotenv.config();
 import express from "express";
 import cookieParser from "cookie-parser";
 import passport from "passport";
-import { sequelize, connectToDatabase } from "./config/database/connection";
+import cors from "cors";
+
 import router from "./routes/router";
 import { errorHandler } from "./middlewares/errorMiddleware";
 
+import { sequelize, connectToDatabase } from "./config/database/connection";
 import { configurePassport } from "./config/passport";
 
 const app = express();
@@ -24,6 +26,10 @@ async function startServer() {
     app.use(express.json());
     app.use(cookieParser());
     app.use(passport.initialize());
+    app.use(cors({
+      origin: "http://localhost:5173",
+      credentials: true,
+    }))
 
     app.use("/api/v1", router);
     app.use(errorHandler);

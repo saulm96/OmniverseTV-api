@@ -43,10 +43,10 @@ router.post('/logout', logout);
 router.post('/refresh-token', refreshToken);
 
 /**
- * GET /auth/verify-email
+ * POST /auth/verify-email
  * Verify user email
  */
-router.get('/verify-email', verifyEmail); 
+router.post('/verify-email', verifyEmail); 
 
 // Google OAuth Routes
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));

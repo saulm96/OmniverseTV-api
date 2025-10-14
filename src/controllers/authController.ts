@@ -172,7 +172,7 @@ export const verifyEmail = async (
   next: NextFunction
 ) => {
   try {
-    const { token } = req.query;
+    const { token } = req.body;
 
     if (!token || typeof token !== "string") {
       throw new BadRequestError("Verification token is missing or invalid.");
