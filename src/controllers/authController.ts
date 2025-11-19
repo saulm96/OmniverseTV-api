@@ -180,8 +180,6 @@ export const verifyEmail = async (
 
     await authService.verifyUserEmail(token);
 
-    // En una aplicación real, aquí redirigirías al frontend
-    // res.redirect('http://tu-frontend.com/login?verified=true');
     res
       .status(200)
       .json({ message: "Email verified successfully. You can now log in." });
@@ -206,7 +204,7 @@ export const googleCallback = (req: Request, res: Response) => {
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
-  res.redirect("http://localhost:3001/dashboard");
+  res.redirect("http://localhost:5173/dashboard");
 };
 
 export const getMe = (req: Request, res: Response) => {
